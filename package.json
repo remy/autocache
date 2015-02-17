@@ -1,0 +1,17 @@
+{
+  "name": "autocache",
+  "version": "0.0.1",
+  "description": "Caching system that automatically populates itself",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cache"
+  ],
+  "author": "Remy Sharp",
+  "license": "MIT",
+  "dependencies": {
+    "es6-promise": "^2.0.1"
+  }
+}
