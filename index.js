@@ -16,7 +16,7 @@ var Cache = (function (root) {
     set: function (key, value, callback) {
       this.data[key] = value;
       if (callback) {
-        callback(null, null);
+        callback(null, value);
       }
     },
     destroy: function (key, callback) {
@@ -27,15 +27,23 @@ var Cache = (function (root) {
     }
   };
 
+  var singleton = null;
+
   function Cache(options) {
     if (!this || this === global) {
-      return new Cache(options);
+      if (singleton === null) {
+        singleton = new Cache(options);
+      }
+
+      return singleton;
     }
 
     // TODO self invoke
     if (options === undefined) {
       options = {};
     }
+
+    this.definitions = {};
 
     this.store = options.store;
     if (!this.store) {
@@ -46,38 +54,31 @@ var Cache = (function (root) {
   }
 
   function define(key, callback) {
-    this.store.set(key + storeSignature, callback.toString());
+    this.definitions[key] = callback;
   }
 
   function update(key, callback) {
     var cache = this;
-    cache.store.get(key + storeSignature, function (error, code) {
-      if (error) {
-        return callback(error)
-      }
+    if (!cache.definitions[key]) {
+      return callback(new Error('No definition found'));
+    }
 
-      if (!code) {
-        return callback(new Error('No definition found'));
-      }
-
-      try {
-        var fn = eval('(' + code + ')');
-        if (fn.length) {
-          fn(function (result) {
-            cache.store.set(key, result, function () {
-              callback(null, result);
-            });
+    try {
+      var fn = cache.definitions[key];
+      if (fn.length) {
+        fn(function (result) {
+          cache.store.set(key, result, function (error, result) {
+            callback(error, result);
           });
-        } else {
-          var result = fn();
-          cache.store.set(key, result, function () {
-            callback(null, result);
-          });
-        }
-      } catch (e) {
-        callback(e);
+        });
+      } else {
+        cache.store.set(key, fn(), function (error, result) {
+          callback(error, result);
+        });
       }
-    });
+    } catch (e) {
+      callback(e);
+    }
   }
 
   function get(key, callback) {

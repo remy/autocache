@@ -9,7 +9,7 @@ describe('sync cache', function () {
   var n = 20;
 
   cache.define('number', function () {
-    return 20;
+    return n++;
   });
 
   it('should return 20', function (done) {
@@ -30,7 +30,15 @@ describe('sync cache', function () {
     cache.clear('number');
     // TODO read internal stats
     cache.get('number', function (error, result) {
-      assert(result === 20, 'result: ' + result);
+      assert(!error);
+      done();
+    });
+  });
+
+  it('should support closures', function (done) {
+    // TODO read internal stats
+    cache.get('number', function (error, result) {
+      assert(result === 21, result);
       done();
     });
   });
