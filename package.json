@@ -4,14 +4,21 @@
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/*.test.js"
   },
   "keywords": [
     "cache"
   ],
   "author": "Remy Sharp",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/remy/autocache.git"
+  },
   "dependencies": {
     "es6-promise": "^2.0.1"
+  },
+  "devDependencies": {
+    "mocha": "^2.1.0"
   }
 }

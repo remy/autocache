@@ -3,19 +3,15 @@ var Cache = (function (root) {
 
   var storeSignature = '-store-signature';
 
-  // if (typeof Promise === 'undefined') {
-  //   require('es6-promise').polyfill();
-  // }
-
   function MemoryStore() {
     this.data = {};
   }
 
   MemoryStore.prototype = {
     get: function (key, callback) {
-      setTimeout(function () {
-        callback(null, this.data[key]);
-      }.bind(this));
+      // setTimeout(function () {
+      callback(null, this.data[key]);
+      // }.bind(this));
     },
     set: function (key, value, callback) {
       this.data[key] = value;
@@ -26,7 +22,7 @@ var Cache = (function (root) {
     destroy: function (key, callback) {
       delete this.data[key];
       if (callback) {
-        setTimeout(callback, 0);
+        callback();
       }
     }
   };
@@ -56,6 +52,14 @@ var Cache = (function (root) {
   function update(key, callback) {
     var cache = this;
     cache.store.get(key + storeSignature, function (error, code) {
+      if (error) {
+        return callback(error)
+      }
+
+      if (!code) {
+        return callback(new Error('No definition found'));
+      }
+
       try {
         var fn = eval('(' + code + ')');
         if (fn.length) {
@@ -96,9 +100,10 @@ var Cache = (function (root) {
   }
 
   function destroy(key, callback) {
-    this.store.destroy(key, function () {
-      this.store.destroy(key + storeSignature, callback);
-    }.bind(this));
+    var cache = this;
+    cache.store.destroy(key + storeSignature, function () {
+      cache.store.destroy(key, callback);
+    });
   }
 
   Cache.prototype = {
