@@ -1,9 +1,11 @@
 'use strict';
 /*global describe:true, it: true */
 var Cache = require('../');
-var assert = require('assert');
+var test = require('tape');
 
-describe('sync cache', function () {
+test('sync cache', function (t) {
+  t.plan(2);
+
   var cache = new Cache();
 
   var n = 20;
@@ -12,49 +14,48 @@ describe('sync cache', function () {
     return n++;
   });
 
-  it('should return 20', function (done) {
-    cache.get('number', function (error, result) {
-      assert(result === 20, 'result: ' + result);
-      done();
-    });
+  cache.get('number', function (error, result) {
+    t.ok(result === 20, 'should return 20');
   });
 
-  it('should not error', function (done) {
-    cache.get('number', function (error, result) {
-      assert(error === null, typeof error);
-      done();
-    });
+  cache.get('number', function (error, result) {
+    t.ok(error === null, 'should not error');
   });
-
-  it('should be resetable', function (done) {
-    cache.clear('number');
-    // TODO read internal stats
-    cache.get('number', function (error, result) {
-      assert(!error);
-      done();
-    });
-  });
-
-  it('should support closures', function (done) {
-    // TODO read internal stats
-    cache.get('number', function (error, result) {
-      assert(result === 21, result);
-      done();
-    });
-  });
-
-  it('should be destroyable', function (done) {
-    cache.destroy('number');
-    cache.get('number', function (error, result) {
-      // console.log(error);
-      assert(error instanceof Error, 'result: ' + result);
-      done();
-    });
-  });
-
 });
 
-describe('async cache', function () {
+test('clearing values', function(t) {
+  t.plan(5);
+
+  var cache = new Cache();
+
+  var n = 20;
+
+  cache.define('number', function () {
+    return n++;
+  });
+
+  cache.get('number', function (error, result) {
+    t.ok(result === 20, 'inital value is correct');
+  });
+
+  cache.get('number', function (error, result) {
+    t.ok(result === 20, 'cached value has not changed');
+  });
+
+  cache.clear('number');
+  cache.get('number', function (error, result) {
+    t.ok(!error, 'cleared value and re-collects');
+    t.ok(result === 21, 'supports closures');
+  });
+
+  cache.destroy('number');
+  cache.get('number', function (error, result) {
+    t.ok(error instanceof Error, 'destroyed definition');
+  });
+});
+
+test('async cache', function (t) {
+  t.plan(3);
   var cache = new Cache();
 
   var n = 20;
@@ -63,49 +64,23 @@ describe('async cache', function () {
     done(n++);
   });
 
-  it('should return 20', function (done) {
-    cache.get('number', function (error, result) {
-      assert(result === 20, 'result: ' + result);
-      done();
-    });
+  cache.get('number', function (error, result) {
+    t.ok(result === 20, 'should return 20');
   });
 
-  it('should not error', function (done) {
-    cache.get('number', function (error, result) {
-      assert(error === null, typeof error);
-      done();
-    });
+  cache.get('number', function (error, result) {
+    t.ok(error === null, 'should not error');
   });
 
-  it('should be resetable', function (done) {
-    cache.clear('number');
-    // TODO read internal stats
-    cache.get('number', function (error, result) {
-      assert(!error);
-      done();
-    });
-  });
 
-  it('should support closures', function (done) {
-    // TODO read internal stats
-    cache.get('number', function (error, result) {
-      assert(result === 21, result);
-      done();
-    });
+  cache.clear('number');
+  cache.get('number', function (error, result) {
+    t.ok(result === 21, 'should support closures');
   });
-
-  it('should be destroyable', function (done) {
-    cache.destroy('number');
-    cache.get('number', function (error, result) {
-      // console.log(error);
-      assert(error instanceof Error, 'result: ' + result);
-      done();
-    });
-  });
-
 });
 
-describe('singleton cache', function () {
+test('singleton cache', function (t) {
+  t.plan(2);
   var cache1 = Cache();
   var cache2 = Cache();
 
@@ -115,19 +90,11 @@ describe('singleton cache', function () {
     return n++;
   });
 
-  it('should return 20', function (done) {
-    var predone = function () {
-      predone = done;
-    };
+  cache1.get('number', function (error, result) {
+    t.ok(result === 20, 'cache1 should return 20');
+  });
 
-    cache1.get('number', function (error, result) {
-      assert(result === 20, 'result: ' + result);
-      predone();
-    });
-
-    cache2.get('number', function (error, result) {
-      assert(result === 20, 'result: ' + result);
-      predone();
-    });
+  cache2.get('number', function (error, result) {
+    t.ok(result === 20, 'cache2 should also return 20');
   });
 });

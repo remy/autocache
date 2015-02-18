@@ -6,5 +6,5 @@ Importantly, the autocache can be used with a persistent store, and is compatibl
 
 ## TODO
 
-- Support singleton pattern by default
-- Don't store string functions, but function references
+- Support clear and destroy all
+- Add redis backed tests

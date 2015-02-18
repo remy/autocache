@@ -4,7 +4,8 @@
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/*.test.js"
+    "test": "tape test/*-tape.test.js | tap-spec",
+    "watch": "nodemon -x 'node test/*-tape.test.js | tap-spec'"
   },
   "keywords": [
     "cache"
@@ -19,6 +20,7 @@
     "es6-promise": "^2.0.1"
   },
   "devDependencies": {
-    "mocha": "^2.1.0"
+    "tape": "^3.5.0",
+    "nodemon": "^1.3.7"
   }
 }

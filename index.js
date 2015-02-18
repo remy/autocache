@@ -9,9 +9,7 @@ var Cache = (function (root) {
 
   MemoryStore.prototype = {
     get: function (key, callback) {
-      // setTimeout(function () {
       callback(null, this.data[key]);
-      // }.bind(this));
     },
     set: function (key, value, callback) {
       this.data[key] = value;
@@ -59,6 +57,7 @@ var Cache = (function (root) {
 
   function update(key, callback) {
     var cache = this;
+
     if (!cache.definitions[key]) {
       return callback(new Error('No definition found'));
     }
@@ -82,18 +81,24 @@ var Cache = (function (root) {
   }
 
   function get(key, callback) {
-    this.store.get(key, function (error, result) {
+    var cache = this;
+
+    cache.store.get(key, function (error, result) {
       if (error) {
         return callback(error);
       }
 
+      if (!cache.definitions[key]) {
+        return callback(new Error('No definition found'));
+      }
+
       if (!error && result === undefined) {
         // update
-        return this.update(key, callback);
+        return cache.update(key, callback);
       }
 
       callback(null, result);
-    }.bind(this));
+    });
   }
 
   function clear(key, callback) {
@@ -102,9 +107,8 @@ var Cache = (function (root) {
 
   function destroy(key, callback) {
     var cache = this;
-    cache.store.destroy(key + storeSignature, function () {
-      cache.store.destroy(key, callback);
-    });
+    delete this.definitions[key];
+    cache.store.destroy(key, callback);
   }
 
   Cache.prototype = {
