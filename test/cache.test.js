@@ -98,3 +98,42 @@ test('singleton cache', function (t) {
     t.ok(result === 20, 'cache2 should also return 20');
   });
 });
+
+test('errors', function (t) {
+  t.plan(4);
+
+  var cache = new Cache({ store: {
+    get: function (key, callback) {
+      callback(new Error('failed'));
+    },
+    set: function () {},
+    destroy: function () {},
+  }});
+
+  cache.define('number', function () {
+    return 20;
+  });
+
+  cache.get('number', function (error, result) {
+    t.ok(error instanceof Error, 'error returned from get');
+  });
+
+  var cache2 = new Cache();
+
+  cache2.get('missing', function (error, result) {
+    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+  });
+
+  cache2.update('missing', function (error, result) {
+    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+  });
+
+  cache2.define('erroring', function (done) {
+    callunknownFunction();
+    done(20);
+  });
+
+  cache2.get('erroring', function (error, result) {
+    t.ok(error.message.indexOf('callunknownFunction') !== -1, 'captured error from definition');
+  });
+});

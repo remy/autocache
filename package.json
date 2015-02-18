@@ -4,8 +4,8 @@
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
-    "test": "tape test/*-tape.test.js | tap-spec",
-    "watch": "nodemon -x 'node test/*-tape.test.js | tap-spec'"
+    "test": "tape test/*.test.js | tap-spec",
+    "watch": "nodemon -x 'node test/*.test.js | tap-spec'"
   },
   "keywords": [
     "cache"
