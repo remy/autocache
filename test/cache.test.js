@@ -48,9 +48,10 @@ test('clearing values', function(t) {
     t.ok(result === 21, 'supports closures');
   });
 
-  cache.destroy('number');
-  cache.get('number', function (error, result) {
-    t.ok(error instanceof Error, 'destroyed definition');
+  cache.destroy('number', function () {
+    cache.get('number', function (error, result) {
+      t.ok(error instanceof Error, 'destroyed definition');
+    });
   });
 });
 
