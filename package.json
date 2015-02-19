@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "tape test/*.test.js | tap-spec",
+    "zuul": "zuul --local 8080 --ui tape -- test/cache.test.js test/localstorage.test.js",
     "watch": "nodemon -x 'node test/*.test.js | tap-spec'"
   },
   "keywords": [
