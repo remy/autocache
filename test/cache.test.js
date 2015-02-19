@@ -4,9 +4,9 @@ var cache = require('../');
 var test = require('tape');
 
 test('sync cache', function (t) {
-  t.plan(2);
+  t.plan(3);
 
-  cache.reset().configure();
+  cache.reset();
 
   var n = 20;
 
@@ -20,13 +20,14 @@ test('sync cache', function (t) {
 
   cache.get('number', function (error, result) {
     t.ok(error === null, 'should not error');
+    t.ok(result === 20, 'should return 20');
   });
 });
 
 test('clearing values', function(t) {
-  t.plan(5);
+  t.plan(3);
 
-  cache.reset().configure();
+  cache.reset();
 
   var n = 20;
 
@@ -34,23 +35,33 @@ test('clearing values', function(t) {
     return n++;
   });
 
-  cache.get('number', function (error, result) {
-    t.ok(result === 20, 'inital value is correct');
-  });
+  t.test('inital tests', function (t) {
+    t.plan(2);
 
-  cache.get('number', function (error, result) {
-    t.ok(result === 20, 'cached value has not changed');
-  });
-
-  cache.clear('number');
-  cache.get('number', function (error, result) {
-    t.ok(!error, 'cleared value and re-collects');
-    t.ok(result === 21, 'supports closures, value now: ' + result);
-  });
-
-  cache.destroy('number', function () {
     cache.get('number', function (error, result) {
-      t.ok(error instanceof Error, 'destroyed definition');
+      t.ok(result === 20, 'inital value is correct');
+    });
+
+    cache.get('number', function (error, result) {
+      t.ok(result === 20, 'cached value has not changed');
+    });
+  });
+
+  t.test('clear', function (t) {
+    t.plan(2);
+    cache.clear('number');
+    cache.get('number', function (error, result) {
+      t.ok(!error, 'cleared value and re-collects');
+      t.ok(result === 21, 'supports closures, value now: ' + result);
+    });
+  });
+
+  t.test('destroy', function (t) {
+    cache.destroy('number', function () {
+      cache.get('number', function (error, result) {
+        t.ok(error instanceof Error, 'destroyed definition');
+        t.end();
+      });
     });
   });
 });
@@ -58,7 +69,7 @@ test('clearing values', function(t) {
 test('async cache', function (t) {
   t.plan(3);
 
-  cache.reset().configure();
+  cache.reset();
 
   var n = 20;
 
@@ -82,7 +93,7 @@ test('async cache', function (t) {
 
 test('singleton cache', function (t) {
   t.plan(2);
-  cache.reset().configure();
+  cache.reset();
   var cache1 = cache();
   var cache2 = cache();
 
@@ -103,7 +114,7 @@ test('singleton cache', function (t) {
 
 test('errors', function (t) {
   t.plan(4);
-  cache.reset().configure();
+  cache.reset();
 
   cache.configure({ store: {
     get: function (key, callback) {

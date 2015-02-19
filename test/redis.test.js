@@ -1,16 +1,15 @@
 'use strict';
 /*global describe:true, it: true */
 var redis = require('redis').createClient();
-var store = require('./fixtures/autocache-redis');
 var cache = require('../');
+var store = require('../adapters/redis')({ client: redis, cache: cache });
 
 var test = require('tape');
 
 test('redis sync cache', function (t) {
   t.plan(2);
 
-  cache.reset().configure({ store: new store({ client: redis }) });
-  cache.clear(); // dump existing data
+  cache.reset().clear(); // dump existing data
 
   var n = 20;
 
@@ -30,8 +29,7 @@ test('redis sync cache', function (t) {
 test('redis clearing values', function(t) {
   t.plan(2);
 
-  cache.reset().configure({ store: new store({ client: redis }) });
-  cache.clear();
+  cache.reset().clear();
 
   var n = 40;
 
@@ -69,10 +67,9 @@ test('redis clearing values', function(t) {
 
 test('redis async cache', function (t) {
   t.plan(3);
-  cache.reset().configure({ store: new store({ client: redis }) });
-  cache.clear();
+  cache.reset().clear();
 
-  var n = 20;
+  var n = 30;
 
   cache.define('number', function (done) {
     done(n++);
@@ -80,17 +77,19 @@ test('redis async cache', function (t) {
 
   t.test('initial check', function (t) {
     cache.get('number', function (error, result) {
-      t.ok(result === 20, 'should return 20');
+      t.ok(result === 30, 'should return 30');
       t.ok(error === null, 'should not error');
       t.end();
     });
   });
 
   t.test('closure', function (t) {
-    cache.clear('number');
-    cache.get('number', function (error, result) {
-      t.ok(result === 21, 'should support closures');
-      t.end();
+    cache.clear('number', function () {
+
+      cache.get('number', function (error, result) {
+        t.ok(result === 31, 'should support closures');
+        t.end();
+      });
     });
   });
 
@@ -105,8 +104,8 @@ test('redis async cache', function (t) {
 test('redis singleton cache', function (t) {
   t.plan(2);
 
-  var cache1 = cache.reset().configure({ store: new store({ client: redis }) });
-  var cache2 = cache.reset().configure({ store: new store({ client: redis }) });
+  var cache1 = cache.reset();
+  var cache2 = cache.reset();
   cache1.clear();
   cache2.clear();
 
@@ -128,8 +127,7 @@ test('redis singleton cache', function (t) {
 test('redis errors', function (t) {
   t.plan(4);
 
-  cache.reset().configure({ store: new store({ client: redis }) });
-  cache.clear();
+  cache.reset().clear();
 
   cache.get('missing', function (error, result) {
     t.ok(error.message.indexOf('No definition found') === 0, 'error returned from missing definition');
@@ -153,7 +151,39 @@ test('redis errors', function (t) {
   });
 });
 
-test('fin', function (t) {
-  redis.end();
-  t.end();
+test('final checks', function (t) {
+  redis.set('autocache:TEST', 'ok', function (er) {
+    if (er) {
+      return t.fail('failed to create test item');
+    }
+    t.pass('test item inserted');
+  });
+  redis.set('autocache:TEST1', 'ok', function (er) {
+    if (er) {
+      return t.fail('failed to create test item');
+    }
+    t.pass('test item inserted');
+  });
+  redis.set('autocache:TEST2', 'ok', function (er) {
+    if (er) {
+      return t.fail('failed to create test item');
+    }
+    t.pass('test item inserted');
+  });
+  redis.set('autocache:TEST3', 'ok', function (er) {
+    if (er) {
+      return t.fail('failed to create test item');
+    }
+    t.pass('test item inserted');
+  });
+
+  cache.clear();
+
+  setTimeout(function () {
+    redis.keys('autocache:*', function(error, key) {
+      t.ok(key.length === 0, 'keys remaining in redis: ' + key.length);
+    });
+    redis.end();
+    t.end();
+  }, 100)
 });

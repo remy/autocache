@@ -6,6 +6,9 @@ var Cache = (function () {
   }
 
   MemoryStore.prototype = {
+    toString: function () {
+      return 'MemoryStore(#' + Object.keys(this.data).length + ')';
+    },
     get: function (key, callback) {
       callback(null, this.data[key]);
     },
@@ -23,16 +26,19 @@ var Cache = (function () {
     },
     clear: function (callback) {
       this.data = {};
-      callback();
+      if (callback) {
+        callback();
+      }
     }
   };
 
-  var settings = {};
+  var settings = {
+    store: new MemoryStore()
+  };
 
   function reset() {
     settings.definitions = {};
     settings.queue = {};
-    settings.store = null;
     return cache;
   }
 
@@ -65,12 +71,12 @@ var Cache = (function () {
     }
 
     function done(error, result) {
-      if (settings.queue[key]) {
+      callback(error, result);
+      if (settings.queue[key] && settings.queue[key].length) {
         settings.queue[key].forEach(function (callback) {
           callback(error, result);
         });
       }
-      callback(error, result);
       delete settings.queue[key];
     }
 
@@ -89,7 +95,7 @@ var Cache = (function () {
         });
       }
     } catch (e) {
-      callback(e);
+      done(e);
     }
   }
 

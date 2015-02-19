@@ -18,7 +18,21 @@ var noop = function(){};
  * @api public
  */
 
-function RedisStore (options) {
+function RedisStore(cache) {
+  var options = {};
+  if (typeof cache === 'function') {
+    options.cache = cache;
+  } else {
+    options = cache;
+  }
+
+  if (options.cache) {
+    var cache = options.cache;
+    delete options.cache;
+    cache.configure({ store: new RedisStore(options) });
+    return RedisStore;
+  }
+
   var self = this;
 
   options = options || {};
@@ -97,6 +111,10 @@ function RedisStore (options) {
   });
 }
 
+RedisStore.prototype.toString = function () {
+  return 'RedisStore()';
+}
+
 /**
  * Attempt to fetch session by the given `sid`.
  *
@@ -128,22 +146,15 @@ RedisStore.prototype.get = function (sid, fn) {
 };
 
 RedisStore.prototype.clear = function (fn) {
+  if (!fn) {
+    fn = noop;
+  }
   var errors = []
-  this.client.keys(this.prefix + ':*', function(error, key) {
+  this.client.keys(this.prefix + '*', function(error, key) {
     this.client.del(key, function (error) {
-      if (error) {
-        errors.push(error);
-      }
+      fn(error);
     });
   }.bind(this));
-
-  // this is flipping lame, but we don't have any promises right now,
-  // so it'll have to do.
-  if (fn) {
-    setTimeout(function () {
-      fn(errors.length ? errors[0] : null);
-    }, 10);
-  }
 };
 
 /**
