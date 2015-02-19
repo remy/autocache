@@ -122,11 +122,11 @@ test('errors', function (t) {
   var cache2 = new Cache();
 
   cache2.get('missing', function (error, result) {
-    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+    t.ok(error.message.indexOf('No definition found') === 0, 'error returned from missing definition');
   });
 
   cache2.update('missing', function (error, result) {
-    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+    t.ok(error.message.indexOf('No definition found') === 0, 'error returned from missing definition');
   });
 
   cache2.define('erroring', function (done) {

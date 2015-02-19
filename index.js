@@ -1,7 +1,6 @@
-var Cache = (function (root) {
+var Cache = (function (global) {
   'use strict';
 
-  var storeSignature = '-store-signature';
   var EventEmitter = require('events').EventEmitter;
 
   function MemoryStore() {
@@ -38,7 +37,6 @@ var Cache = (function (root) {
       return singleton;
     }
 
-    // TODO self invoke
     if (options === undefined) {
       options = {};
     }
@@ -59,7 +57,6 @@ var Cache = (function (root) {
 
   function define(key, callback) {
     this.definitions[key] = callback;
-    console.log(this.definitions);
   }
 
   function update(key, callback) {
@@ -108,7 +105,6 @@ var Cache = (function (root) {
       }
 
       if (!cache.definitions[key]) {
-        console.log(cache.definitions);
         return callback(new Error('No definition found in get for ' + key));
       }
 
