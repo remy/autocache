@@ -1,6 +1,6 @@
 'use strict';
 /*global describe:true, it: true */
-var cache = require('../')();
+var cache = require('../');
 var test = require('tape');
 
 test('sync cache', function (t) {

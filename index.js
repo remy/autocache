@@ -20,6 +20,10 @@ var Cache = (function () {
       if (callback) {
         callback();
       }
+    },
+    clear: function (callback) {
+      this.data = {};
+      callback();
     }
   };
 
@@ -52,6 +56,7 @@ var Cache = (function () {
 
   function define(key, callback) {
     settings.definitions[key] = callback;
+    cache.clear(key);
   }
 
   function update(key, callback) {
@@ -73,13 +78,13 @@ var Cache = (function () {
       var fn = settings.definitions[key];
       if (fn.length) {
         fn(function (result) {
-          settings.store.set(key, result, function (error) {
+          settings.store.set(key, JSON.stringify(result), function (error) {
             done(error, result);
           });
         });
       } else {
         var result = fn();
-        settings.store.set(key, result, function (error) {
+        settings.store.set(key, JSON.stringify(result), function (error) {
           done(error, result);
         });
       }
@@ -109,19 +114,45 @@ var Cache = (function () {
         }
       }
 
-      callback(null, result);
+      try {
+        return callback(null, JSON.parse(result));
+      } catch (error) {
+        return callback(error);
+      }
     });
   }
 
   function clear(key, callback) {
-    settings.store.destroy(key, callback);
+    if (typeof key === 'function') {
+      callback = key;
+      key = null;
+    }
+
+    if (!key) {
+      settings.store.clear(callback);
+    } else {
+      settings.store.destroy(key, callback);
+    }
   }
 
   function destroy(key, callback) {
-    settings.store.destroy(key, function (error) {
-       delete settings.definitions[key];
-       callback(error);
-    });
+    if (typeof key === 'function') {
+      callback = key;
+      key = null;
+    }
+
+    if (!key) {
+      // destory all
+      settings.store.destroy(function (error) {
+        settings.definitions = {};
+        callback(error);
+      });
+    } else {
+      settings.store.destroy(key, function (error) {
+         delete settings.definitions[key];
+         callback(error);
+      });
+    }
   }
 
   cache.configure = cache; // circular
