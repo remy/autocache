@@ -1,12 +1,12 @@
 'use strict';
 /*global describe:true, it: true */
-var Cache = require('../');
+var cache = require('../');
 var test = require('tape');
 
 test('sync cache', function (t) {
   t.plan(2);
 
-  var cache = new Cache();
+  cache.reset().configure();
 
   var n = 20;
 
@@ -26,7 +26,7 @@ test('sync cache', function (t) {
 test('clearing values', function(t) {
   t.plan(5);
 
-  var cache = new Cache();
+  cache.reset().configure();
 
   var n = 20;
 
@@ -45,7 +45,7 @@ test('clearing values', function(t) {
   cache.clear('number');
   cache.get('number', function (error, result) {
     t.ok(!error, 'cleared value and re-collects');
-    t.ok(result === 21, 'supports closures');
+    t.ok(result === 21, 'supports closures, value now: ' + result);
   });
 
   cache.destroy('number', function () {
@@ -57,7 +57,8 @@ test('clearing values', function(t) {
 
 test('async cache', function (t) {
   t.plan(3);
-  var cache = new Cache();
+
+  cache.reset().configure();
 
   var n = 20;
 
@@ -73,7 +74,6 @@ test('async cache', function (t) {
     t.ok(error === null, 'should not error');
   });
 
-
   cache.clear('number');
   cache.get('number', function (error, result) {
     t.ok(result === 21, 'should support closures');
@@ -82,8 +82,9 @@ test('async cache', function (t) {
 
 test('singleton cache', function (t) {
   t.plan(2);
-  var cache1 = Cache();
-  var cache2 = Cache();
+  cache.reset().configure();
+  var cache1 = cache();
+  var cache2 = cache();
 
   var n = 20;
 
@@ -102,8 +103,9 @@ test('singleton cache', function (t) {
 
 test('errors', function (t) {
   t.plan(4);
+  cache.reset().configure();
 
-  var cache = new Cache({ store: {
+  cache.configure({ store: {
     get: function (key, callback) {
       callback(new Error('failed'));
     },
@@ -119,14 +121,14 @@ test('errors', function (t) {
     t.ok(error instanceof Error, 'error returned from get');
   });
 
-  var cache2 = new Cache();
+  var cache2 = cache();
 
   cache2.get('missing', function (error, result) {
-    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+    t.ok(error.message.indexOf('No definition found') === 0, 'error returned from missing definition');
   });
 
   cache2.update('missing', function (error, result) {
-    t.ok(error.message === 'No definition found', 'error returned from missing definition');
+    t.ok(error.message.indexOf('No definition found') === 0, 'error returned from missing definition');
   });
 
   cache2.define('erroring', function (done) {
