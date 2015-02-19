@@ -53,6 +53,7 @@ app.get('/status', function (req, res) {
 setInterval(function () {
   cache.clear('testStatus');
 }, 10 * 60 * 1000);
+```
 
 ## methods
 
