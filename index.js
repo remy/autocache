@@ -1,7 +1,5 @@
-var Cache = (function (global) {
+var Cache = (function () {
   'use strict';
-
-  var EventEmitter = require('events').EventEmitter;
 
   function MemoryStore() {
     this.data = {};
@@ -25,97 +23,89 @@ var Cache = (function (global) {
     }
   };
 
-  var singleton = null;
+  var settings = {};
 
-  function Cache(options) {
+  function reset() {
+    settings.definitions = {};
+    settings.queue = {};
+    settings.store = null;
+    return cache;
+  }
 
-    if (!this || this === global) {
-      if (singleton === null) {
-        singleton = new Cache(options);
-      }
-
-      return singleton;
-    }
-
+  function cache(options) {
     if (options === undefined) {
       options = {};
     }
 
-    this.definitions = {};
-    this.queue = {};
-    this.store = options.store;
-
-    if (!this.store) {
-      this.store = new MemoryStore();
+    if (!settings.store) {
+      reset();
     }
 
-    return this;
+    settings.store = options.store;
+
+    if (!settings.store) {
+      settings.store = new MemoryStore();
+    }
+
+    return cache;
   }
 
-  // for "express session" adapter compatibility
-  Cache.Store = EventEmitter;
-
   function define(key, callback) {
-    this.definitions[key] = callback;
+    settings.definitions[key] = callback;
   }
 
   function update(key, callback) {
-    var cache = this;
-
-    if (!cache.definitions[key]) {
+    if (!settings.definitions[key]) {
       return callback(new Error('No definition found in update for ' + key));
     }
 
     function done(error, result) {
-      if (cache.queue[key]) {
-        cache.queue[key].forEach(function (callback) {
+      if (settings.queue[key]) {
+        settings.queue[key].forEach(function (callback) {
           callback(error, result);
         });
       }
       callback(error, result);
-      delete cache.queue[key];
+      delete settings.queue[key];
     }
 
     try {
-      var fn = cache.definitions[key];
+      var fn = settings.definitions[key];
       if (fn.length) {
         fn(function (result) {
-          cache.store.set(key, result, function (error) {
+          settings.store.set(key, result, function (error) {
             done(error, result);
           });
         });
       } else {
         var result = fn();
-        cache.store.set(key, result, function (error) {
+        settings.store.set(key, result, function (error) {
           done(error, result);
         });
       }
     } catch (e) {
-      console.log(e.stack);
       callback(e);
     }
   }
 
   function get(key, callback) {
-    var cache = this;
-
-    cache.store.get(key, function (error, result) {
+    settings.store.get(key, function (error, result) {
       if (error) {
         return callback(error);
       }
 
-      if (!cache.definitions[key]) {
+      if (!settings.definitions[key]) {
         return callback(new Error('No definition found in get for ' + key));
       }
 
       if (!error && result === undefined) {
         // if there's a queue waiting for this data, hold up,
         // else go get it
-        if (cache.queue[key] !== undefined) {
-          return cache.queue[key].push(callback);
+        if (settings.queue[key] !== undefined) {
+          return settings.queue[key].push(callback);
         } else {
-          cache.queue[key] = [];
-          return cache.update(key, callback);
+          settings.queue[key] = [];
+          return update(key, callback);
         }
       }
 
@@ -124,25 +114,26 @@ var Cache = (function (global) {
   }
 
   function clear(key, callback) {
-    this.store.destroy(key, callback);
+    settings.store.destroy(key, callback);
   }
 
   function destroy(key, callback) {
-    var cache = this;
-    cache.store.destroy(key, function (error) {
-       delete cache.definitions[key];
+    settings.store.destroy(key, function (error) {
+       delete settings.definitions[key];
        callback(error);
     });
   }
 
-  Cache.prototype.clear = clear;
-  Cache.prototype.define = define;
-  Cache.prototype.destroy = destroy;
-  Cache.prototype.get = get;
-  Cache.prototype.update = update; // internal function
+  cache.configure = cache; // circular
+  cache.clear = clear;
+  cache.define = define;
+  cache.destroy = destroy;
+  cache.get = get;
+  cache.reset = reset;
+  cache.update = update;
 
-  return Cache;
-})(this);
+  return cache;
+})();
 
 if (typeof exports !== 'undefined') {
   module.exports = Cache;
