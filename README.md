@@ -10,3 +10,4 @@ Importantly, the autocache can be used with a persistent store, and is compatibl
 
 - Support clear and destroy all
 - Add redis backed tests
+- Ensure instances use different prefix on store

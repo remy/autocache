@@ -2,6 +2,7 @@ var Cache = (function (root) {
   'use strict';
 
   var storeSignature = '-store-signature';
+  var EventEmitter = require('events').EventEmitter;
 
   function MemoryStore() {
     this.data = {};
@@ -28,6 +29,7 @@ var Cache = (function (root) {
   var singleton = null;
 
   function Cache(options) {
+
     if (!this || this === global) {
       if (singleton === null) {
         singleton = new Cache(options);
@@ -42,8 +44,9 @@ var Cache = (function (root) {
     }
 
     this.definitions = {};
-
+    this.queue = {};
     this.store = options.store;
+
     if (!this.store) {
       this.store = new MemoryStore();
     }
@@ -51,31 +54,47 @@ var Cache = (function (root) {
     return this;
   }
 
+  // for "express session" adapter compatibility
+  Cache.Store = EventEmitter;
+
   function define(key, callback) {
     this.definitions[key] = callback;
+    console.log(this.definitions);
   }
 
   function update(key, callback) {
     var cache = this;
 
     if (!cache.definitions[key]) {
-      return callback(new Error('No definition found'));
+      return callback(new Error('No definition found in update for ' + key));
+    }
+
+    function done(error, result) {
+      if (cache.queue[key]) {
+        cache.queue[key].forEach(function (callback) {
+          callback(error, result);
+        });
+      }
+      callback(error, result);
+      delete cache.queue[key];
     }
 
     try {
       var fn = cache.definitions[key];
       if (fn.length) {
         fn(function (result) {
-          cache.store.set(key, result, function (error, result) {
-            callback(error, result);
+          cache.store.set(key, result, function (error) {
+            done(error, result);
           });
         });
       } else {
-        cache.store.set(key, fn(), function (error, result) {
-          callback(error, result);
+        var result = fn();
+        cache.store.set(key, result, function (error) {
+          done(error, result);
         });
       }
     } catch (e) {
+      console.log(e.stack);
       callback(e);
     }
   }
@@ -89,12 +108,19 @@ var Cache = (function (root) {
       }
 
       if (!cache.definitions[key]) {
-        return callback(new Error('No definition found'));
+        console.log(cache.definitions);
+        return callback(new Error('No definition found in get for ' + key));
       }
 
       if (!error && result === undefined) {
-        // update
-        return cache.update(key, callback);
+        // if there's a queue waiting for this data, hold up,
+        // else go get it
+        if (cache.queue[key] !== undefined) {
+          return cache.queue[key].push(callback);
+        } else {
+          cache.queue[key] = [];
+          return cache.update(key, callback);
+        }
       }
 
       callback(null, result);
@@ -107,17 +133,17 @@ var Cache = (function (root) {
 
   function destroy(key, callback) {
     var cache = this;
-    delete this.definitions[key];
-    cache.store.destroy(key, callback);
+    cache.store.destroy(key, function (error) {
+       delete cache.definitions[key];
+       callback(error);
+    });
   }
 
-  Cache.prototype = {
-    clear: clear,
-    define: define,
-    destroy: destroy,
-    get: get,
-    update: update // internal function
-  };
+  Cache.prototype.clear = clear;
+  Cache.prototype.define = define;
+  Cache.prototype.destroy = destroy;
+  Cache.prototype.get = get;
+  Cache.prototype.update = update; // internal function
 
   return Cache;
 })(this);
