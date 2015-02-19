@@ -29,13 +29,13 @@ if (typeof global.localStorage === 'undefined') {
 }
 
 var cache = require('../');
-var store = require('./fixtures/autocache-localstorage');
+var store = require('../adapters/localstorage')(cache);
 var test = require('tape');
 
-test('sync cache', function (t) {
+test('localstorage sync cache', function (t) {
   t.plan(2);
 
-  cache.reset().configure({ store: new store() }).clear();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -52,10 +52,10 @@ test('sync cache', function (t) {
   });
 });
 
-test('clearing values', function(t) {
+test('localstorage clearing values', function(t) {
   t.plan(5);
 
-  cache.reset().configure({ store: new store() }).clear();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -72,6 +72,7 @@ test('clearing values', function(t) {
   });
 
   cache.clear('number');
+
   cache.get('number', function (error, result) {
     t.ok(!error, 'cleared value and re-collects');
     t.ok(result === 21, 'supports closures, value now: ' + result);
@@ -80,14 +81,15 @@ test('clearing values', function(t) {
   cache.destroy('number', function () {
     cache.get('number', function (error, result) {
       t.ok(error instanceof Error, 'destroyed definition');
+      // t.end();
     });
   });
 });
 
-test('async cache', function (t) {
+test('localstorage async cache', function (t) {
   t.plan(3);
 
-  cache.reset().configure({ store: new store() }).clear();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -109,9 +111,9 @@ test('async cache', function (t) {
   });
 });
 
-test('singleton cache', function (t) {
+test('localstorage singleton cache', function (t) {
   t.plan(2);
-  cache.reset().configure({ store: new store() }).clear();
+  cache.reset().clear();
   var cache1 = cache();
   var cache2 = cache();
 
@@ -130,9 +132,9 @@ test('singleton cache', function (t) {
   });
 });
 
-test('errors', function (t) {
+test('localstorage errors', function (t) {
   t.plan(4);
-  cache.reset().configure({ store: new store() }).clear();
+  cache.reset().clear();
 
   cache.configure({ store: {
     get: function (key, callback) {

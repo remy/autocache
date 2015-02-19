@@ -4,10 +4,15 @@
 
 Instead of caching single keys and values, autocache allows you to define a setter and when a request for that key is placed, it will run the setter live, caching the result and returning it.
 
-Importantly, the autocache can be used with a persistent store, and is compatible with express session stores (such as [connect-redis](https://github.com/tj/connect-redis)).
+Importantly, the autocache can, *and should* be used with a persistent store so long as the adapter implments the [storage api](#storage-api).
+
+Note that by default, the cache is stored in memory (which kinda isn't the point), so when you restart, the cache will be lost.
+
+## Usage
+
+
 
 ## TODO
 
-- Support clear and destroy all
-- Ensure instances use different prefix on store
 - Support TTL
+- Test prefix support

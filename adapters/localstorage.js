@@ -3,14 +3,21 @@ var LocalStore = (function () { // jshint ignore:line
 
   var noop = function () {};
 
-  function LocalStore(options) {
-    options = options || {};
-    this.prefix = options.prefix === null ? 'autocache:' : options.prefix;
+  function LocalStore(cache) {
+    if (cache) {
+      cache.configure({ store: new LocalStore() });
+      return LocalStore;
+    }
+
+    // this.prefix = options.prefix === null ? 'autocache:' : options.prefix;
 
     // this.ttl = options.ttl;
     // this.disableTTL = options.disableTTL;
   }
 
+  LocalStore.prototype.toString = function () {
+    return 'LocalStore(#' + localStorage.length + ')';
+  }
 
   LocalStore.prototype.get = function (sid, fn) {
     var store = this;
