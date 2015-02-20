@@ -33,7 +33,9 @@ var Cache = (function () {
   };
 
   var settings = {
-    store: new MemoryStore()
+    store: new MemoryStore(),
+    definitions: {},
+    queue: {}
   };
 
   function reset() {

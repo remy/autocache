@@ -133,3 +133,7 @@ function LocalStore(autocache) {
 
 - Support TTL
 - Test prefix support
+
+## License
+
+[MIT](http://rem.mit-license.org)
