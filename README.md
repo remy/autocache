@@ -57,7 +57,9 @@ setInterval(function () {
 }, 10 * 60 * 1000);
 ```
 
-## methods
+## Adapters
+
+## Methods
 
 ### cache.define(string, function)
 
@@ -83,7 +85,7 @@ Clear all (with no arguments) or a single cached entry.
 
 ### cache.destroy([string])
 
-Destory the all definitions (with no arguments) or a single definition entry.
+Destroy the all definitions (with no arguments) or a single definition entry.
 
 ### cache.configure({ store: adapter })
 
@@ -100,7 +102,7 @@ If you want to write your own adapter for persistent storage you must implement 
 ```text
 get(key<string>, callback<function>)
 set(key<string>, value<string>, callback<function>)
-destory([key<string>])
+destroy([key<string>])
 clear()
 ```
 
@@ -113,6 +115,13 @@ Notes:
 3. `clear` should only clear objects created by the cache (which can be identified by a prefix).
 4. Calling the adapter function should accept the `autocache` as an argument, example below.
 5. Autocache will handle converting user objects to and from JSON, so the adapter will always be storing a string.
+
+**Important** once your adapter has been attached, it should emit a `connect` event:
+
+```js
+// this tells autocache that we're reading to start caching
+autocache.emit('connect');
+```
 
 ### Automatically setting the autocache store
 

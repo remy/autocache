@@ -3,6 +3,7 @@ var Cache = (function () {
 
   function MemoryStore() {
     this.data = {};
+    connected = true;
   }
 
   MemoryStore.prototype = {
@@ -38,6 +39,27 @@ var Cache = (function () {
     queue: {}
   };
 
+  var connected = false;
+  var methodQueue = {};
+
+  function stub(method, fn) {
+    methodQueue[method] = [];
+    return function stubWrapper() {
+      if (!connected) {
+        return methodQueue[method].push({ context: this, arguments: arguments });
+      }
+      fn.apply(this, arguments);
+    };
+  }
+
+  function flush() {
+    Object.keys(methodQueue).forEach(function (method) {
+      methodQueue[method].forEach(function (data) {
+        cache[method].apply(data.context, data.arguments);
+      });
+    });
+  }
+
   function reset() {
     settings.definitions = {};
     settings.queue = {};
@@ -53,6 +75,7 @@ var Cache = (function () {
       reset();
     }
 
+    connected = false;
     settings.store = options.store;
 
     if (!settings.store) {
@@ -64,7 +87,6 @@ var Cache = (function () {
 
   function define(key, callback) {
     settings.definitions[key] = callback;
-    cache.clear(key);
   }
 
   function update(key, callback) {
@@ -163,13 +185,24 @@ var Cache = (function () {
     }
   }
 
+  function emit(event) {
+    if (event === 'connect') {
+      connected = true;
+      flush();
+    } else if (event === 'disconnect') {
+      connected = false;
+      console.log('autocache has lost it\'s persistent connection');
+    }
+  }
+
+  cache.emit = emit;
   cache.configure = cache; // circular
-  cache.clear = clear;
+  cache.clear = stub('clear', clear);
   cache.define = define;
-  cache.destroy = destroy;
-  cache.get = get;
+  cache.destroy = stub('destroy', destroy);
+  cache.get = stub('get', get);
   cache.reset = reset;
-  cache.update = update;
+  cache.update = stub('update', update);
 
   return cache;
 })();
