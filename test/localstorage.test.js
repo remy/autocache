@@ -57,10 +57,11 @@ test('localstorage clearing values', function(t) {
 
   cache.reset().clear();
 
-  var n = 20;
+  var n = 19;
 
   cache.define('number', function () {
-    return n++;
+    n++;
+    return n;
   });
 
   cache.get('number', function (error, result) {

@@ -1,12 +1,12 @@
 'use strict';
 /*global describe:true, it: true */
-var cache = require('../');
+var cache = require('../')();
 var test = require('tape');
 
 test('sync cache', function (t) {
   t.plan(3);
 
-  cache.reset();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -27,7 +27,7 @@ test('sync cache', function (t) {
 test('clearing values', function(t) {
   t.plan(3);
 
-  cache.reset();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -69,7 +69,7 @@ test('clearing values', function(t) {
 test('async cache', function (t) {
   t.plan(3);
 
-  cache.reset();
+  cache.reset().clear();
 
   var n = 20;
 
@@ -97,6 +97,9 @@ test('singleton cache', function (t) {
   var cache1 = cache();
   var cache2 = cache();
 
+  cache1.clear();
+  cache2.clear();
+
   var n = 20;
 
   cache1.define('number', function () {
@@ -114,7 +117,7 @@ test('singleton cache', function (t) {
 
 test('errors', function (t) {
   t.plan(4);
-  cache.reset();
+  cache.reset().clear();
 
   cache.configure({ store: {
     get: function (key, callback) {
@@ -123,6 +126,8 @@ test('errors', function (t) {
     set: function () {},
     destroy: function () {},
   }});
+
+  cache.emit('connect');
 
   cache.define('number', function () {
     return 20;
@@ -150,4 +155,33 @@ test('errors', function (t) {
   cache2.get('erroring', function (error, result) {
     t.ok(error.message.indexOf('callunknownFunction') !== -1, 'captured error from definition');
   });
+});
+
+test('ttr', function (t) {
+  t.plan(2);
+  cache.reset().clear();
+
+  var n = 19;
+  cache.define({
+    name: 'number',
+    update: function () {
+      n++;
+      return n;
+    },
+    ttr: 500
+  });
+
+  cache.get('number', function (error, result) {
+    t.ok(result === 20, 'result was ' + result);
+  });
+
+  setTimeout(function () {
+    cache.get('number', function (error, result) {
+      t.ok(result === 21, 'result was ' + result + ' after auto refresh');
+      // hack: redefine to clear the ttr
+      cache.define('number', function () {});
+      t.end();
+    });
+  }, 750);
+
 });

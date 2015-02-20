@@ -2,12 +2,16 @@ var LocalStore = (function () { // jshint ignore:line
   'use strict';
 
   var noop = function () {};
+  var cache = null;
 
-  function LocalStore(cache) {
-    if (cache) {
-      cache.configure({ store: new LocalStore() });
+  function LocalStore(c) {
+    if (c) {
+      cache = c;
+      c.configure({ store: new LocalStore() });
+      cache.emit('connect');
       return LocalStore;
     }
+
 
     // this.prefix = options.prefix === null ? 'autocache:' : options.prefix;
 

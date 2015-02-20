@@ -67,6 +67,21 @@ For a particular `string` key, set a function that will return a cached value.
 
 Note that the `function` can be synchronous or asynchronous. If your code accepts a `done` function, you can pass the value you wish to cache to the `done` function argument (as seen in the usage example above).
 
+### cache.define(options)
+
+As above, but with extended options:
+
+```js
+{
+  name: "string",
+  update: function () {},
+  ttl: 1000, // time to live (ms)
+  ttr: 1000, // time to refresh (ms)
+}
+```
+
+Note that if `ttr` is present, `ttl` will be ignored.
+
 ### cache.get(string, function)
 
 If a cached value is available for `string` it will call your `function` with an error first, then the result.
@@ -140,7 +155,6 @@ function LocalStore(autocache) {
 
 ## TODO
 
-- Support TTL
 - Test prefix support
 
 ## License

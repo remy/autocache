@@ -1,6 +1,17 @@
 var Cache = (function () {
   'use strict';
 
+  var noop = function () {};
+
+  var settings = {
+    store: new MemoryStore(),
+    definitions: {},
+    queue: {}
+  };
+
+  var connected = false;
+  var methodQueue = {};
+
   function MemoryStore() {
     this.data = {};
     connected = true;
@@ -32,15 +43,6 @@ var Cache = (function () {
       }
     }
   };
-
-  var settings = {
-    store: new MemoryStore(),
-    definitions: {},
-    queue: {}
-  };
-
-  var connected = false;
-  var methodQueue = {};
 
   function stub(method, fn) {
     methodQueue[method] = [];
@@ -75,7 +77,9 @@ var Cache = (function () {
       reset();
     }
 
-    connected = false;
+    if (!settings.store) {
+      connected = false;
+    }
     settings.store = options.store;
 
     if (!settings.store) {
@@ -86,10 +90,37 @@ var Cache = (function () {
   }
 
   function define(key, callback) {
+    var options = {};
+    if (!callback && typeof key !== 'string') {
+      // expect object with options
+      options = key;
+      callback = options.update;
+      key = options.name;
+    }
+
+    if (!key || !callback) {
+      throw new Error('define require a name and callback');
+    }
+
+    if (settings.definitions[key] && settings.definitions[key].timer) {
+      clearInterval(settings.definitions[key].timer);
+    }
+
     settings.definitions[key] = callback;
+
+    if (options.ttr || options.ttl) {
+      settings.definitions[key].timer = setInterval(function () {
+        cache[options.ttr ? 'update' : 'clear'](key);
+      }, options.ttr || options.ttl);
+    }
+
   }
 
   function update(key, callback) {
+    if (!callback) {
+      callback = noop;
+    }
+
     if (!settings.definitions[key]) {
       return callback(new Error('No definition found in update for ' + key));
     }
@@ -124,6 +155,10 @@ var Cache = (function () {
   }
 
   function get(key, callback) {
+    if (!callback) {
+      callback = noop;
+    }
+
     settings.store.get(key, function (error, result) {
       if (error) {
         return callback(error);
