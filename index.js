@@ -3,12 +3,6 @@ var Cache = (function () {
 
   var noop = function () {};
 
-  var settings = {
-    store: new MemoryStore(),
-    definitions: {},
-    queue: {}
-  };
-
   var connected = false;
   var methodQueue = {};
 
@@ -44,6 +38,12 @@ var Cache = (function () {
     }
   };
 
+  var settings = {
+    store: new MemoryStore(),
+    definitions: {},
+    queue: {}
+  };
+
   function stub(method, fn) {
     methodQueue[method] = [];
     return function stubWrapper() {
@@ -77,10 +77,10 @@ var Cache = (function () {
       reset();
     }
 
-    if (!settings.store) {
+    if (options.store !== undefined) {
       connected = false;
+      settings.store = options.store;
     }
-    settings.store = options.store;
 
     if (!settings.store) {
       settings.store = new MemoryStore();
@@ -238,10 +238,13 @@ var Cache = (function () {
   cache.get = stub('get', get);
   cache.reset = reset;
   cache.update = stub('update', update);
+  // cache.settings = settings;
 
   return cache;
 })();
 
 if (typeof exports !== 'undefined') {
   module.exports = Cache;
+
+  module.exports.version = require('./package').version;
 }
