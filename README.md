@@ -18,12 +18,13 @@ General usage:
 
 - Define a storage proceedure against a `key`
 - Get the key value
-- Clear/invalidate values (TODO: implement TTL)
+- Clear/invalidate values
 
 Note that autocache is a singleton.
 
 ```js
-var cache = require('autocache');
+var redisAC = require('autocache-redis');
+var cache = require('autocache')({ store: redisAC });
 
 cache.define('testStatus', function (done) {
   // call an imaginary test status API
@@ -51,13 +52,20 @@ app.get('/status', function (req, res) {
 });
 
 // every 10 minutes, clear the cache
-// note: this is a TODO in our app, we would like to use TTL.
+// note: we could also do this using the object notation and the TTL property
 setInterval(function () {
   cache.clear('testStatus');
 }, 10 * 60 * 1000);
 ```
 
 ## Adapters
+
+Current adapters:
+
+* [Redis](https://www.npmjs.com/package/autocache-redis)
+* [localStorage](https://www.npmjs.com/package/autocache-localstorage)
+
+Please do contribute your own adapters - missing: mongodb, memcache, sqlite..?
 
 ## Methods
 
