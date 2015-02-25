@@ -204,11 +204,13 @@ var Cache = (function () {
     if (typeof key === 'function') {
       callback = key;
       key = null;
+    } else if (!callback) {
+      callback = noop;
     }
 
     if (!key) {
       // destory all
-      settings.store.destroy(function (error) {
+      settings.store.clear(function (error) {
         settings.definitions = {};
         callback(error);
       });
