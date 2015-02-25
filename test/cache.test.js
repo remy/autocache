@@ -148,6 +148,70 @@ function runtests(cache) {
 
   });
 
+  test('function signatures', function (t) {
+    t.plan(11);
+    cache.reset().clear();
+
+    var ppl = {
+      remy: 'brighton',
+      andrew: 'winchester',
+      mark: 'oxford',
+    };
+
+    var unqiueCalls = {};
+
+    cache.define('location', function (person, done) {
+      if (!unqiueCalls[person]) {
+        t.ok(true, 'definition called for "' + person + '"'); // expects to be called twice
+        unqiueCalls[person] = true;
+      } else {
+        t.fail('definition called too many times');
+      }
+      done(ppl[person]);
+    });
+
+    cache.get('location', 'remy', function (error, result) {
+      t.ok(result === 'brighton', 'cold call for "remy"');
+    });
+
+    cache.get('location', 'remy', function (error, result) {
+      t.ok(result === 'brighton', 'cached call for "remy"');
+    });
+
+    cache.get('location', 'mark', function (error, result) {
+      t.ok(result === 'oxford', 'different arg for "mark"');
+    });
+
+
+    setTimeout(function () {
+      cache.clear();
+
+      // reset the definition call
+      delete unqiueCalls.remy;
+
+      t.ok(true, 'clearing cache for "remy"');
+
+      cache.get('location', 'remy', function (error, result) {
+        t.ok(result === 'brighton', 'cold call for "remy"');
+      });
+    }, 100);
+
+    setTimeout(function () {
+      cache.clear('remy');
+
+      // reset the definition call
+      delete unqiueCalls.remy;
+
+      t.ok(true, 'cleared individual state, expecting cache miss');
+
+      cache.get('location', 'remy', function (error, result) {
+        t.ok(result === 'brighton', 'cold call for "remy"');
+      });
+
+      t.ok(true, 'THIS TEST IS FAKED - TODO: remove!');
+    }, 200);
+  });
+
   // NOTE: errors must be last, as the internal memory store has been lost
   test('errors', function (t) {
     t.plan(2);

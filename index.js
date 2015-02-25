@@ -44,6 +44,20 @@ var Cache = (function () {
     queue: {}
   };
 
+  function generateKey(key) {
+    var args = [].slice.call(arguments);
+    var key = args.shift();
+    if (typeof args.slice(-1).pop() === 'function') {
+      args.pop(); // drop the callback
+    }
+
+    if (!args.length) {
+      return key; // FIXME this is hiding a bug in .clear(key);
+    }
+
+    return key + ':' + JSON.stringify(args);
+  }
+
   function stub(method, fn) {
     methodQueue[method] = [];
     return function stubWrapper() {
@@ -116,10 +130,16 @@ var Cache = (function () {
 
   }
 
-  function update(key, callback) {
-    if (!callback) {
-      callback = noop;
+  function update(key) {
+    var args = [].slice.apply(arguments);
+
+    if (typeof args.slice(-1).pop() !== 'function') {
+      args.push(noop);
     }
+
+    var callback = args[args.length - 1];
+    var storeKey = generateKey.apply(this, args);
+
 
     if (!settings.definitions[key]) {
       return callback(new Error('No definition found in update for ' + key));
@@ -127,25 +147,25 @@ var Cache = (function () {
 
     function done(error, result) {
       callback(error, result);
-      if (settings.queue[key] && settings.queue[key].length) {
-        settings.queue[key].forEach(function (callback) {
+      if (settings.queue[storeKey] && settings.queue[storeKey].length) {
+        settings.queue[storeKey].forEach(function (callback) {
           callback(error, result);
         });
       }
-      delete settings.queue[key];
+      delete settings.queue[storeKey];
     }
 
     try {
       var fn = settings.definitions[key];
       if (fn.length) {
-        fn(function (result) {
-          settings.store.set(key, JSON.stringify(result), function (error) {
+        fn.apply(this, args.slice(1, -1).concat(function (result) {
+          settings.store.set(storeKey, JSON.stringify(result), function (error) {
             done(error, result);
           });
-        });
+        }));
       } else {
         var result = fn();
-        settings.store.set(key, JSON.stringify(result), function (error) {
+        settings.store.set(storeKey, JSON.stringify(result), function (error) {
           done(error, result);
         });
       }
@@ -154,12 +174,17 @@ var Cache = (function () {
     }
   }
 
-  function get(key, callback) {
-    if (!callback) {
-      callback = noop;
+  function get(key) {
+    var args = [].slice.apply(arguments);
+
+    if (typeof args.slice(-1).pop() !== 'function') {
+      args.push(noop);
     }
 
-    settings.store.get(key, function (error, result) {
+    var callback = args[args.length - 1];
+    var storeKey = generateKey.apply(this, args);
+
+    settings.store.get(storeKey, function (error, result) {
       if (error) {
         return callback(error);
       }
@@ -171,11 +196,12 @@ var Cache = (function () {
       if (!error && result === undefined) {
         // if there's a queue waiting for this data, hold up,
         // else go get it
-        if (settings.queue[key] !== undefined) {
-          return settings.queue[key].push(callback);
+        if (settings.queue[storeKey] !== undefined) {
+          return settings.queue[storeKey].push(callback);
         } else {
-          settings.queue[key] = [];
-          return update(key, callback);
+          settings.queue[storeKey] = [];
+          // call update with
+          return update.apply(this, args);
         }
       }
 

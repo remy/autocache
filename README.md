@@ -98,6 +98,35 @@ If there is no cached value, autocache will run the definition, cache the value 
 
 If multiple calls are made to `get` under the same `string` value, and the value hasn't been cached yet, the calls will queue up until a cached value has been returned, after which all the queued `function`s will be called.
 
+### cache.get(string, [fn args], function)
+
+Cache getting also supports arguments to your definition function. This is *only* supported on async definitions.
+
+For example:
+
+```js
+cache.define('location', function (name, done) {
+  xhr.get('/location-lookup/' + name).then(done);
+});
+
+// this will miss the cache, and run the definition
+cache.get('location', 'brighton', function (data) {
+  // does something with data
+});
+
+// this will ALSO miss the cache
+cache.get('location', 'berlin', function (data) {
+  // does something with data
+});
+
+// this will hit the cache
+cache.get('location', 'berlin', function (data) {
+  // does something with data
+});
+```
+
+In the above example, once the cache is called with the argument `brighton`, the name and argument are now the unique key to the cache.
+
 ### cache.update(string, function)
 
 Calls the definition for the `string`, caches it internally, and calls your `function` with and error and the result.
