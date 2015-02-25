@@ -20,7 +20,7 @@ General usage:
 - Get the key value
 - Clear/invalidate values
 
-Note that autocache is a singleton.
+Note that autocache is a singleton, so we only need to set the store once.
 
 ```js
 var redisAC = require('autocache-redis');
