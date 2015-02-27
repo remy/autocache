@@ -6,6 +6,7 @@
   "scripts": {
     "test": "for FILE in test/*.test.js; do echo $FILE; tape $FILE | tap-spec; if [ $? -ne 0 ]; then exit 1; fi; done",
     "zuul": "zuul --local 8080 --ui tape -- test/cache.test.js test/localstorage.test.js",
+    "test-solo": "tape test/cache.test.js | tap-spec",
     "watch": "nodemon -x 'node test/*.test.js | tap-spec'"
   },
   "keywords": [
