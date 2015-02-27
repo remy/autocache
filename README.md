@@ -88,6 +88,8 @@ As above, but with extended options:
 }
 ```
 
+TTL will auto expire (and `clear`) the entry based on the `ttl` milliseconds since the last time it was *accessed*.
+
 Note that if `ttr` is present, `ttl` will be ignored.
 
 ### cache.get(string, function)

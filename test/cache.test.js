@@ -148,8 +148,65 @@ function runtests(cache) {
 
   });
 
+  test.only('ttl', function (t) {
+    t.plan(10);
+    cache.reset().clear();
+
+    var n = 19;
+    cache.define({
+      name: 'number',
+      update: function () {
+        t.pass('definition called');
+        n++;
+        return n;
+      },
+      ttl: 500
+    });
+
+    cache.get('number', function (error, result) {
+      t.ok(result === 20, 'initial result was ' + result);
+    });
+
+    cache.clear('number', function (error, found) {
+      t.ok(found === true, 'value found in cache');
+    });
+
+    // get again to re-cache
+    cache.get('number', function (error, result) {
+      t.ok(result === 21, 'hot cache result was ' + result);
+    });
+
+    // should reset the timer on the TTL
+    setTimeout(function () {
+      // get again to re-cache
+      cache.get('number', function (error, result) {
+        t.ok(result === 21, 'expected to still be hot: ' + result);
+      });
+
+      // in 600ms it should have fully expired
+      setTimeout(function () {
+        cache.clear('number', function (error, found) {
+          t.ok(found === false, 'value correctly missing from cache');
+        });
+
+        cache.get('number', function (error, result) {
+          t.ok(result === 22, 'result was ' + result + ' after expired');
+          // hack: redefine to clear the ttr
+          cache.define('number', function () {});
+        });
+      }, 600 + 500 + 100);
+    }, 400);
+
+    setTimeout(function () {
+      cache.get('number', function (error, result) {
+        t.ok(result === 21, 'value should still be hot ' + result);
+      });
+    }, 600);
+
+  });
+
   test('function signatures', function (t) {
-    t.plan(11);
+    t.plan(12);
     cache.reset().clear();
 
     var ppl = {
@@ -160,14 +217,18 @@ function runtests(cache) {
 
     var unqiueCalls = {};
 
-    cache.define('location', function (person, done) {
-      if (!unqiueCalls[person]) {
-        t.ok(true, 'definition called for "' + person + '"'); // expects to be called twice
-        unqiueCalls[person] = true;
-      } else {
-        t.fail('definition called too many times');
-      }
-      done(ppl[person]);
+    cache.define({
+      name: 'location',
+      update: function (person, done) {
+        if (!unqiueCalls[person]) {
+          t.ok(true, 'definition called for "' + person + '"'); // expects to be called twice
+          unqiueCalls[person] = true;
+        } else {
+          t.fail('definition called too many times');
+        }
+        done(ppl[person]);
+      },
+      ttl: 500,
     });
 
     cache.get('location', 'remy', function (error, result) {
@@ -210,6 +271,12 @@ function runtests(cache) {
 
       t.ok(true, 'THIS TEST IS FAKED - TODO: remove!');
     }, 200);
+
+    setTimeout(function () {
+      cache.clear('location', function (error, found) {
+        t.ok(found === false, 'cache entry is empty');
+      });
+    }, 750);
   });
 
   // NOTE: errors must be last, as the internal memory store has been lost

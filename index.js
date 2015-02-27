@@ -28,15 +28,16 @@ var Cache = (function () {
       }
     },
     destroy: function (key, callback) {
+      var found = this.data[key] !== undefined;
       delete this.data[key];
       if (callback) {
-        callback();
+        callback(null, found);
       }
     },
     clear: function (callback) {
       this.data = {};
       if (callback) {
-        callback();
+        callback(null, true);
       }
     }
   };
@@ -119,6 +120,9 @@ var Cache = (function () {
       options = key;
       callback = options.update;
       key = options.name;
+    } else {
+      options.update = callback;
+      options.name = key;
     }
 
     if (!key || !callback) {
@@ -129,13 +133,13 @@ var Cache = (function () {
       clearInterval(settings.definitions[key].timer);
     }
 
-    settings.definitions[key] = callback;
+    settings.definitions[key] = options;
 
-    if (options.ttr || options.ttl) {
+    if (options.ttr) {
       settings.definitions[key].timer = setInterval(function () {
-        debug(options.ttr ? 'TTR fired: updating' : 'TTL expired: clearing');
-        cache[options.ttr ? 'update' : 'clear'](key);
-      }, options.ttr || options.ttl);
+        debug('TTR fired: updating');
+        cache.update(key);
+      }, options.ttr);
     }
 
   }
@@ -157,6 +161,14 @@ var Cache = (function () {
 
     function done(error, result) {
       debug('update & store: ' + storeKey);
+
+      if (!error && settings.definitions[key] && settings.definitions[key].ttl) {
+        settings.definitions[key].ttlTimer = setTimeout(function () {
+          debug('TTL expired: ' + storeKey);
+          cache.clear(storeKey);
+        }, settings.definitions[key].ttl);
+      }
+
       callback(error, result);
       if (settings.queue[storeKey] && settings.queue[storeKey].length) {
         settings.queue[storeKey].forEach(function (callback) {
@@ -167,7 +179,7 @@ var Cache = (function () {
     }
 
     try {
-      var fn = settings.definitions[key];
+      var fn = settings.definitions[key].update;
       if (fn.length) {
         fn.apply(this, args.slice(1, -1).concat(function (result) {
           settings.store.set(storeKey, JSON.stringify(result), function (error) {
@@ -219,12 +231,34 @@ var Cache = (function () {
 
       debug('get hit: ' + storeKey);
 
+      // reset the TTL if there is one
+      startTTL(storeKey);
+
       try {
         return callback(null, JSON.parse(result));
       } catch (error) {
         return callback(error);
       }
     });
+  }
+
+  function clearTTL(key) {
+    if (settings.definitions[key] && settings.definitions[key].ttlTimer) {
+      debug('TTL cleared for: ' + key)
+      clearTimeout(settings.definitions[key].ttlTimer);
+      delete settings.definitions[key].ttlTimer;
+    }
+  }
+
+  function startTTL(key) {
+    clearTTL(key);
+    if (settings.definitions[key] && settings.definitions[key].ttl) {
+      debug('TTL set for: ' + key + ' (in ' + settings.definitions[key].ttl + 'ms)');
+      settings.definitions[key].ttlTimer = setTimeout(function () {
+        debug('TTL expired: ' + key);
+        cache.clear(key);
+      }, settings.definitions[key].ttl);
+    }
   }
 
   function clear(key, callback) {
@@ -234,8 +268,10 @@ var Cache = (function () {
     }
 
     if (!key) {
+      Object.keys(settings.definitions).forEach(clearTTL);
       settings.store.clear(callback);
     } else {
+      clearTTL(key);
       settings.store.destroy(key, callback);
     }
   }
@@ -250,14 +286,14 @@ var Cache = (function () {
 
     if (!key) {
       // destory all
-      settings.store.clear(function (error) {
+      cache.clear(function (error) {
         settings.definitions = {};
         callback(error);
       });
     } else {
       settings.store.destroy(key, function (error) {
-         delete settings.definitions[key];
-         callback(error);
+        delete settings.definitions[key];
+        callback(error);
       });
     }
   }

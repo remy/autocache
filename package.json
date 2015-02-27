@@ -1,11 +1,12 @@
 {
   "name": "autocache",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
     "test": "for FILE in test/*.test.js; do echo $FILE; tape $FILE | tap-spec; if [ $? -ne 0 ]; then exit 1; fi; done",
     "zuul": "zuul --local 8080 --ui tape -- test/cache.test.js test/localstorage.test.js",
+    "test-solo": "tape test/cache.test.js | tap-spec",
     "watch": "nodemon -x 'node test/*.test.js | tap-spec'"
   },
   "keywords": [
