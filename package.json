@@ -17,7 +17,9 @@
     "type": "git",
     "url": "http://github.com/remy/autocache.git"
   },
-  "dependencies": {},
+  "dependencies": {
+    "debug": "^2.1.1"
+  },
   "devDependencies": {
     "autocache-localstorage": "^1.0.2",
     "autocache-redis": "^1.1.2",

@@ -3,6 +3,9 @@ var Cache = (function () {
 
   var noop = function () {};
 
+  // only use require if we're in a node-like environment
+  var debug = typeof exports !== 'undefined' ? require('debug')('autocache') : noop;
+
   var connected = false;
   var methodQueue = {};
 
@@ -44,7 +47,7 @@ var Cache = (function () {
     queue: {}
   };
 
-  function generateKey(key) {
+  function generateKey() {
     var args = [].slice.call(arguments);
     var key = args.shift();
     if (typeof args.slice(-1).pop() === 'function') {
@@ -62,21 +65,26 @@ var Cache = (function () {
     methodQueue[method] = [];
     return function stubWrapper() {
       if (!connected) {
-        return methodQueue[method].push({ context: this, arguments: arguments });
+        var sig = method + '(' + (arguments.length ? generateKey.apply(this, arguments) : '') + ')';
+        debug('queued: ' + sig);
+        return methodQueue[method].push({ context: this, arguments: arguments, sig: sig });
       }
       fn.apply(this, arguments);
     };
   }
 
   function flush() {
+    debug('flushing ' + Object.keys(methodQueue).join(' '));
     Object.keys(methodQueue).forEach(function (method) {
       methodQueue[method].forEach(function (data) {
+        debug('flush ' + data.sig);
         cache[method].apply(data.context, data.arguments);
       });
     });
   }
 
   function reset() {
+    debug('reset');
     settings.definitions = {};
     settings.queue = {};
     return cache;
@@ -93,6 +101,7 @@ var Cache = (function () {
 
     if (options.store !== undefined) {
       connected = false;
+      debug('assigned store');
       settings.store = options.store;
     }
 
@@ -124,6 +133,7 @@ var Cache = (function () {
 
     if (options.ttr || options.ttl) {
       settings.definitions[key].timer = setInterval(function () {
+        debug(options.ttr ? 'TTR fired: updating' : 'TTL expired: clearing');
         cache[options.ttr ? 'update' : 'clear'](key);
       }, options.ttr || options.ttl);
     }
@@ -146,6 +156,7 @@ var Cache = (function () {
     }
 
     function done(error, result) {
+      debug('update & store: ' + storeKey);
       callback(error, result);
       if (settings.queue[storeKey] && settings.queue[storeKey].length) {
         settings.queue[storeKey].forEach(function (callback) {
@@ -194,6 +205,7 @@ var Cache = (function () {
       }
 
       if (!error && result === undefined) {
+        debug('get miss: ' + storeKey);
         // if there's a queue waiting for this data, hold up,
         // else go get it
         if (settings.queue[storeKey] !== undefined) {
@@ -204,6 +216,8 @@ var Cache = (function () {
           return update.apply(this, args);
         }
       }
+
+      debug('get hit: ' + storeKey);
 
       try {
         return callback(null, JSON.parse(result));
