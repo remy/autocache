@@ -181,7 +181,12 @@ var Cache = (function () {
     try {
       var fn = settings.definitions[key].update;
       if (fn.length) {
-        fn.apply(this, args.slice(1, -1).concat(function (result) {
+        fn.apply(this, args.slice(1, -1).concat(function (error, result) {
+          if (error) {
+            // don't store if there's an error
+            return done(error);
+          }
+
           settings.store.set(storeKey, JSON.stringify(result), function (error) {
             done(error, result);
           });
@@ -193,6 +198,7 @@ var Cache = (function () {
         });
       }
     } catch (e) {
+      debug('exception in user code');
       done(e);
     }
   }
@@ -229,7 +235,7 @@ var Cache = (function () {
         }
       }
 
-      debug('get hit: ' + storeKey);
+      // debug('get hit: ' + storeKey);
 
       // reset the TTL if there is one
       startTTL(storeKey);

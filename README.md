@@ -108,21 +108,25 @@ For example:
 
 ```js
 cache.define('location', function (name, done) {
-  xhr.get('/location-lookup/' + name).then(done);
+  xhr.get('/location-lookup/' + name).then(function (result) {
+    done(null, result);
+  }).catch(function (error) {
+    done(error);
+  });
 });
 
 // this will miss the cache, and run the definition
-cache.get('location', 'brighton', function (data) {
+cache.get('location', 'brighton', function (error, data) {
   // does something with data
 });
 
 // this will ALSO miss the cache
-cache.get('location', 'berlin', function (data) {
+cache.get('location', 'berlin', function (error, data) {
   // does something with data
 });
 
 // this will hit the cache
-cache.get('location', 'berlin', function (data) {
+cache.get('location', 'berlin', function (error, data) {
   // does something with data
 });
 ```

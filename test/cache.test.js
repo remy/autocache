@@ -2,7 +2,8 @@
 /*global describe:true, it: true */
 var test = require('tape');
 
-runtests(require('../')());
+var cache = require('../')();
+runtests(cache);
 
 module.exports = runtests;
 
@@ -78,7 +79,7 @@ function runtests(cache) {
     var n = 20;
 
     cache.define('number', function (done) {
-      done(n++);
+      done(null, n++);
     });
 
     cache.get('number', function (error, result) {
@@ -148,7 +149,7 @@ function runtests(cache) {
 
   });
 
-  test.only('ttl', function (t) {
+  test('ttl', function (t) {
     t.plan(10);
     cache.reset().clear();
 
@@ -226,7 +227,7 @@ function runtests(cache) {
         } else {
           t.fail('definition called too many times');
         }
-        done(ppl[person]);
+        done(null, ppl[person]);
       },
       ttl: 500,
     });
