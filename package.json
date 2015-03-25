@@ -1,6 +1,6 @@
 {
   "name": "autocache",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
