@@ -160,7 +160,7 @@ var Cache = (function () {
     }
 
     function done(error, result) {
-      debug('update & store: ' + storeKey);
+      debug(error ? 'update errored, ignoring store' : ('update & store: ' + storeKey));
 
       if (!error && settings.definitions[key] && settings.definitions[key].ttl) {
         settings.definitions[key].ttlTimer = setTimeout(function () {
@@ -218,12 +218,13 @@ var Cache = (function () {
         return callback(error);
       }
 
-      if (!settings.definitions[key]) {
-        return callback(new Error('No definition found in get for ' + key));
-      }
-
       if (!error && result === undefined) {
         debug('get miss: ' + storeKey);
+
+        if (!settings.definitions[key]) {
+          return callback(new Error('No definition found in get for ' + key));
+        }
+
         // if there's a queue waiting for this data, hold up,
         // else go get it
         if (settings.queue[storeKey] !== undefined) {
