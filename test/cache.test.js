@@ -8,6 +8,12 @@ runtests(cache);
 module.exports = runtests;
 
 function runtests(cache) {
+  test('setup', function (t) {
+    cache.reset().clear(function () {
+      t.end();
+    });
+  });
+
   test('sync cache', function (t) {
     t.plan(3);
 
@@ -62,8 +68,20 @@ function runtests(cache) {
     });
 
     t.test('destroy', function (t) {
+      t.plan(3);
       cache.destroy('number', function () {
         cache.get('number', function (error, result) {
+          t.ok(error === null, 'no error on cached result');
+          t.ok(result === 21, 'number exists after definition is deleted: ' + result);
+        });
+      });
+
+      cache.define('name', function () {
+        return 'remy';
+      });
+
+      cache.destroy('name', function () {
+        cache.get('name', function (error, data) {
           t.ok(error instanceof Error, 'destroyed definition');
           t.end();
         });

@@ -293,15 +293,11 @@ var Cache = (function () {
 
     if (!key) {
       // destory all
-      cache.clear(function (error) {
-        settings.definitions = {};
-        callback(error);
-      });
+      settings.definitions = {};
+      callback(null);
     } else {
-      settings.store.destroy(key, function (error) {
-        delete settings.definitions[key];
-        callback(error);
-      });
+      delete settings.definitions[key];
+      callback(null);
     }
   }
 
