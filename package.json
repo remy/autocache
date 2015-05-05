@@ -22,8 +22,8 @@
     "debug": "^2.1.1"
   },
   "devDependencies": {
-    "autocache-localstorage": "^1.1.2",
-    "autocache-redis": "^1.2.0",
+    "autocache-localstorage": "^1.2.0",
+    "autocache-redis": "^1.3.0",
     "nodemon": "^1.3.7",
     "redis": "^0.12.1",
     "tap-bail": "0.0.0",
