@@ -291,14 +291,25 @@ var Cache = (function () {
       callback = noop;
     }
 
+    var keys = [];
+
     if (!key) {
       // destory all
-      settings.definitions = {};
-      callback(null);
+      keys = Object.keys(settings.definitions);
     } else {
-      delete settings.definitions[key];
-      callback(null);
+      keys = [key];
     }
+
+    keys.map(function (key) {
+      clearTTL(key);
+
+      if (settings.definitions[key].timer) {
+        clearInterval(settings.definitions[key].timer);
+      }
+      settings.definitions[key] = {};
+    });
+
+    callback(null);
   }
 
   function emit(event) {

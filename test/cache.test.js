@@ -149,7 +149,7 @@ function runtests(cache) {
         n++;
         return n;
       },
-      ttr: 500
+      ttr: 500,
     });
 
     cache.get('number', function (error, result) {
@@ -165,6 +165,50 @@ function runtests(cache) {
       });
     }, 750);
 
+  });
+
+  test('ttr still accessible, but state', function (t) {
+    t.plan(9);
+    cache.reset().clear();
+
+    var n = 0;
+    cache.define({
+      name: 'number',
+      update: function (done) {
+        n++;
+        setTimeout(function () {
+          done(null, n);
+        }, 500);
+      },
+      ttr: 1000,
+    });
+
+    function check(expect, n) {
+      setTimeout(function () {
+        cache.get('number', function (error, result) {
+          t.ok(result === expect, 'expecting ' + expect + ', result for ' + n
+            + 'ms was ' + result);
+        });
+      }, n);
+    }
+
+    cache.get('number', function (error, result) {
+      t.ok(result === 1, 'initial expecting 1, result was ' + 1);
+
+      check(1, 800);
+      check(1, 800);
+      check(1, 800);
+      check(1, 800);
+      check(1, 800);
+      check(1, 800);
+      check(1, 800);
+
+      check(2, 1500);
+
+      setTimeout(function () {
+        cache.destroy('number');
+      }, 800);
+    });
   });
 
   test('ttl', function (t) {
