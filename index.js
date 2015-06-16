@@ -102,7 +102,7 @@ var Cache = (function () {
 
     if (options.store !== undefined) {
       connected = false;
-      debug('assigned store');
+      debug('assigned caching store');
       settings.store = options.store;
     }
 
@@ -137,7 +137,7 @@ var Cache = (function () {
 
     if (options.ttr) {
       settings.definitions[key].timer = setInterval(function () {
-        debug('TTR fired: updating');
+        debug('%s: TTR fired - updating', key);
         cache.update(key);
       }, options.ttr);
     }
@@ -160,11 +160,15 @@ var Cache = (function () {
     }
 
     function done(error, result) {
-      debug(error ? 'update errored, ignoring store' : ('update & store: ' + storeKey));
+      if (error) {
+        debug('%s: update errored, ignoring store:', storeKey, error);
+      } else {
+        debug('%s: updated & stored', storeKey);
+      }
 
       if (!error && settings.definitions[key] && settings.definitions[key].ttl) {
         settings.definitions[key].ttlTimer = setTimeout(function () {
-          debug('TTL expired: ' + storeKey);
+          debug('%s: TTL expired', storeKey);
           cache.clear(storeKey);
         }, settings.definitions[key].ttl);
       }
@@ -198,7 +202,7 @@ var Cache = (function () {
         });
       }
     } catch (e) {
-      debug('exception in user code');
+      debug('%s: exception in user code', key);
       done(e);
     }
   }
@@ -219,7 +223,7 @@ var Cache = (function () {
       }
 
       if (!error && result === undefined) {
-        debug('get miss: ' + storeKey);
+        debug('%s: get miss', storeKey);
 
         if (!settings.definitions[key]) {
           return callback(new Error('No definition found in get for ' + key));
@@ -236,8 +240,6 @@ var Cache = (function () {
         }
       }
 
-      // debug('get hit: ' + storeKey);
-
       // reset the TTL if there is one
       startTTL(storeKey);
 
@@ -251,7 +253,7 @@ var Cache = (function () {
 
   function clearTTL(key) {
     if (settings.definitions[key] && settings.definitions[key].ttlTimer) {
-      debug('TTL cleared for: ' + key)
+      debug('%s: TTL cleared', key);
       clearTimeout(settings.definitions[key].ttlTimer);
       delete settings.definitions[key].ttlTimer;
     }
@@ -260,9 +262,9 @@ var Cache = (function () {
   function startTTL(key) {
     clearTTL(key);
     if (settings.definitions[key] && settings.definitions[key].ttl) {
-      debug('TTL set for: ' + key + ' (in ' + settings.definitions[key].ttl + 'ms)');
+      debug('%s: TTL set (in ' + settings.definitions[key].ttl + 'ms)');
       settings.definitions[key].ttlTimer = setTimeout(function () {
-        debug('TTL expired: ' + key);
+        debug('%s: TTL expired', key);
         cache.clear(key);
       }, settings.definitions[key].ttl);
     }
