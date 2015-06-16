@@ -342,6 +342,38 @@ function runtests(cache) {
     }, 750);
   });
 
+  test.only('error in setting does not clear cache', function (t) {
+    t.plan(3);
+    cache.reset().clear();
+
+    var n = 0;
+
+    cache.define({
+      name: 'number',
+      update: function (done) {
+        if (n > 0) {
+          return done(new Error('fail'));
+        }
+
+        n++;
+        done(null, n);
+      },
+    });
+
+    cache.get('number', function (error, number) {
+      cache.update('number', function (error) {
+        t.equal(error.message, 'fail');
+      });
+
+      t.ok(number === 1, 'TEST: 1st call, number is ' + number);
+
+      cache.get('number', function (error, number) {
+        t.ok(number === 1, 'TEST: 2nd call, number is ' + number);
+        t.end();
+      });
+    });
+  });
+
   // NOTE: errors must be last, as the internal memory store has been lost
   test('errors', function (t) {
     t.plan(2);
