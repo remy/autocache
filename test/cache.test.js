@@ -1,6 +1,7 @@
 'use strict';
 /*global describe:true, it: true */
 var test = require('tape');
+process.env.NODE_ENV = 'debug';
 
 var cache = require('../')();
 runtests(cache);
@@ -342,7 +343,7 @@ function runtests(cache) {
     }, 750);
   });
 
-  test.only('error in setting does not clear cache', function (t) {
+  test('error in setting does not clear cache', function (t) {
     t.plan(3);
     cache.reset().clear();
 
@@ -373,6 +374,40 @@ function runtests(cache) {
       });
     });
   });
+
+  test('ttl with primed keyed store', function (t) {
+    // prime the store
+    cache.settings.store.data['test-ttl:["foo"]'] = 10;
+
+    t.plan(3);
+
+    cache.define({
+      name: 'test-ttl',
+      update: function (value, done) {
+        t.ok(true, 'update was called');
+        done(null, 20);
+      },
+      ttl: 1000, // auto drop this cache
+    });
+
+    // initial hit should read primed value
+    cache.get('test-ttl', 'foo', function (error, data) {
+      if (error) {
+        t.fail(error.message);
+      }
+      t.equal(data, 10, 'primed value was correct');
+    });
+
+    setTimeout(function () {
+      cache.get('test-ttl', 'foo', function (error, data) {
+        if (error) {
+          t.fail(error.message);
+        }
+        t.equal(data, 20, 'primed value expired');
+      });
+    }, 2000);
+  });
+
 
   // NOTE: errors must be last, as the internal memory store has been lost
   test('errors', function (t) {

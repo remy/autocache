@@ -75,7 +75,7 @@ var Cache = (function () {
   }
 
   function flush() {
-    debug('flushing ' + Object.keys(methodQueue).join(' '));
+    debug('flushing queued calls');
     Object.keys(methodQueue).forEach(function (method) {
       methodQueue[method].forEach(function (data) {
         debug('flush ' + data.sig);
@@ -154,7 +154,6 @@ var Cache = (function () {
     var callback = args[args.length - 1];
     var storeKey = generateKey.apply(this, args);
 
-
     if (!settings.definitions[key]) {
       return callback(new Error('No definition found in update for ' + key));
     }
@@ -215,7 +214,7 @@ var Cache = (function () {
     }
 
     var callback = args[args.length - 1];
-    var storeKey = generateKey.apply(this, args);
+    var storeKey = generateKey.apply(this, args); // jshint ignore:line
 
     settings.store.get(storeKey, function (error, result) {
       if (error) {
@@ -261,12 +260,16 @@ var Cache = (function () {
 
   function startTTL(key) {
     clearTTL(key);
-    if (settings.definitions[key] && settings.definitions[key].ttl) {
-      debug('%s: TTL set (in ' + settings.definitions[key].ttl + 'ms)');
+    var root = key.split(':').shift();
+    if (settings.definitions[root] && settings.definitions[root].ttl) {
+      debug('%s: TTL set (in ' + settings.definitions[root].ttl + 'ms)', key);
+      if (!settings.definitions[key]) {
+        settings.definitions[key] = {};
+      }
       settings.definitions[key].ttlTimer = setTimeout(function () {
         debug('%s: TTL expired', key);
         cache.clear(key);
-      }, settings.definitions[key].ttl);
+      }, settings.definitions[root].ttl);
     }
   }
 
@@ -277,6 +280,7 @@ var Cache = (function () {
     }
 
     if (!key) {
+      debug('clearing all');
       Object.keys(settings.definitions).forEach(clearTTL);
       settings.store.clear(callback);
     } else {
@@ -297,8 +301,10 @@ var Cache = (function () {
 
     if (!key) {
       // destory all
+      debug('destroying all');
       keys = Object.keys(settings.definitions);
     } else {
+      debug('destroying one: %s', key);
       keys = [key];
     }
 
@@ -327,12 +333,17 @@ var Cache = (function () {
   cache.emit = emit;
   cache.configure = cache; // circular
   cache.clear = stub('clear', clear);
-  cache.define = define;
+  cache.define = stub('define', define);
   cache.destroy = stub('destroy', destroy);
   cache.get = stub('get', get);
   cache.reset = reset;
   cache.update = stub('update', update);
-  // cache.settings = settings;
+
+  if (typeof process !== 'undefined') {
+    if (process.env.NODE_ENV === 'debug') {
+      cache.settings = settings;
+    }
+  }
 
   return cache;
 })();
