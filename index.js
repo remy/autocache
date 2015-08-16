@@ -448,6 +448,5 @@ var Cache = (function () {
 
 if (typeof exports !== 'undefined') {
   module.exports = Cache;
-
-  module.exports.version = require('./package').version;
+  module.exports.version = require('./package').version || 'development';
 }

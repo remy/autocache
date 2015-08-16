@@ -4,6 +4,7 @@ var test = require('tape');
 var async = require('async');
 
 function runtests(cache, done) {
+  cache.debug = true;
 
   test = beforeEach(test, function (t) {
     cache.reset().clear(function () {

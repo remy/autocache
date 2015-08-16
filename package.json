@@ -1,13 +1,13 @@
 {
   "name": "autocache",
-  "version": "0.7.5",
   "description": "Caching system that automatically populates itself",
   "main": "index.js",
   "scripts": {
     "test": "for FILE in test/*.test.js; do echo $FILE; NODE_ENV=test tape $FILE | tap-spec; if [ $? -ne 0 ]; then exit 1; fi; done",
-    "zuul": "zuul --local 8080 --ui tape -- test/cache.test.js test/localstorage.test.js",
+    "zuul": "zuul --local 8080 --ui tape -- test/cache.test.js node_modules/autocache-localstorage/test/localstorage.test.js",
     "test-solo": "tape test/cache.test.js | tap-bail | tap-spec",
-    "watch": "nodemon -x 'node test/*.test.js | tap-spec'"
+    "watch": "nodemon -x 'node test/*.test.js | tap-spec'",
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post"
   },
   "keywords": [
     "cache"
@@ -29,6 +29,7 @@
     "redis": "^0.12.1",
     "tap-bail": "0.0.0",
     "tap-spec": "^2.2.1",
-    "tape": "^3.5.0"
+    "tape": "^3.5.0",
+    "semantic-release": "^4.0.3"
   }
 }
