@@ -58,6 +58,11 @@ setInterval(function () {
 }, 10 * 60 * 1000);
 ```
 
+## Important notes
+
+- If an update is taking a long time, this does not block `.get` requests. The gets will be served with the old value until the update has completed and commited a new value.
+- Calls to `.clear` will queue (and thus block) gets until the clear is complete, after which the `.get` requests are automatically flushed.
+
 ## Adapters
 
 Current adapters:
@@ -158,10 +163,12 @@ Clear all of the internal state of the cache, except for the storage adapter.
 If you want to write your own adapter for persistent storage you must implement the following functions:
 
 ```text
-get(key<string>, callback<function>)
-set(key<string>, value<string>, callback<function>)
-destroy([key<string>])
-clear()
+get(key<string>, callback<function>) // get single
+set(key<string>, value<string>, callback<function>) // set single
+destroy([key<string>], callback<function>) // delete single
+clear(callback<function>) // delete all
+dock(autocache<Autocache>) // passes copy of active cache
+toString() // returns a string representation of your store (for debugging)
 ```
 
 See the [adapters](https://github.com/remy/autocache/tree/master/adapters) for examples of code.
@@ -173,6 +180,7 @@ Notes:
 3. `clear` should only clear objects created by the cache (which can be identified by a prefix).
 4. Calling the adapter function should accept the `autocache` as an argument, example below.
 5. Autocache will handle converting user objects to and from JSON, so the adapter will always be storing a string.
+6. `dock` is called with the autocache instance passed in, if the store is already connected, you should call `autocache.emit('connect')` immediately.
 
 **Important** once your adapter has been attached, it should emit a `connect` event:
 

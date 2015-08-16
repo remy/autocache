@@ -1,17 +1,26 @@
 var Cache = (function () {
-  'use strict';
-
   var noop = function () {};
 
   // only use require if we're in a node-like environment
-  var debug = typeof exports !== 'undefined' ? require('debug')('autocache') : noop;
+  var debugOn = false;
+  var debug = typeof exports !== 'undefined' ?
+      require('debug')('autocache') :
+      function (log) {
+        if (console && console.log && cache.debug) {
+          console.log(log);
+        }
+      };
 
   var connected = false;
-  var methodQueue = {};
+  var queue = [];
+  var useQueue = false;
 
   function MemoryStore() {
     this.data = {};
-    connected = true;
+    debug('Using MemoryStore');
+    if (!debug) {
+      console.warn('Using internal MemoryStore - this will not persist');
+    }
   }
 
   MemoryStore.prototype = {
@@ -39,13 +48,16 @@ var Cache = (function () {
       if (callback) {
         callback(null, true);
       }
-    }
+    },
+    dock: function (cache) {
+      cache.emit('connect');
+    },
   };
 
   var settings = {
-    store: new MemoryStore(),
+    // store: new MemoryStore(),
     definitions: {},
-    queue: {}
+    queue: {}, // not the same as the queued calls
   };
 
   function generateKey() {
@@ -62,13 +74,29 @@ var Cache = (function () {
     return key + ':' + JSON.stringify(args);
   }
 
+  function queueJob(method) {
+    var methodArgs = '';
+    var args = [].slice.call(arguments, 1);
+    if (args.length) {
+      methodArgs = generateKey.apply(this, args);
+    }
+    var sig = method + '(' + methodArgs + ')';
+
+    debug('queued: ' + sig);
+    return queue.push({
+      method: method,
+      context: this,
+      arguments: args,
+      sig: sig,
+    });
+  }
+
   function stub(method, fn) {
-    methodQueue[method] = [];
     return function stubWrapper() {
       if (!connected) {
-        var sig = method + '(' + (arguments.length ? generateKey.apply(this, arguments) : '') + ')';
-        debug('queued: ' + sig);
-        return methodQueue[method].push({ context: this, arguments: arguments, sig: sig });
+        var args = [].slice.call(arguments);
+        args.unshift(method);
+        return queueJob.apply(this, args);
       }
       fn.apply(this, arguments);
     };
@@ -76,16 +104,21 @@ var Cache = (function () {
 
   function flush() {
     debug('flushing queued calls');
-    Object.keys(methodQueue).forEach(function (method) {
-      methodQueue[method].forEach(function (data) {
-        debug('flush ' + data.sig);
-        cache[method].apply(data.context, data.arguments);
-      });
+    queue.forEach(function (job) {
+      debug('flush %s: %s', job.method, job.sig);
+      cache[job.method].apply(job.context, job.arguments);
     });
+    queue = [];
   }
 
   function reset() {
     debug('reset');
+    Object.keys(settings.definitions).forEach(function (key) {
+      clearTTL(key);
+      if (settings.definitions[key].ttr) {
+        clearInterval(settings.definitions[key].ttr);
+      }
+    });
     settings.definitions = {};
     settings.queue = {};
     return cache;
@@ -102,12 +135,17 @@ var Cache = (function () {
 
     if (options.store !== undefined) {
       connected = false;
-      debug('assigned caching store');
+      debug('assigned caching store: ' + options.store.toString());
       settings.store = options.store;
     }
 
     if (!settings.store) {
       settings.store = new MemoryStore();
+    }
+
+    // try to dock
+    if (settings.store.dock) {
+      settings.store.dock(cache);
     }
 
     return cache;
@@ -126,7 +164,7 @@ var Cache = (function () {
     }
 
     if (!key || !callback) {
-      throw new Error('define require a name and callback');
+      throw new Error('.define requires a name and callback');
     }
 
     if (settings.definitions[key] && settings.definitions[key].timer) {
@@ -165,11 +203,13 @@ var Cache = (function () {
         debug('%s: updated & stored', storeKey);
       }
 
-      if (!error && settings.definitions[key] && settings.definitions[key].ttl) {
-        settings.definitions[key].ttlTimer = setTimeout(function () {
+      var defs = settings.definitions[key];
+
+      if (!error && defs && defs.ttl) {
+        defs.ttlTimer = setTimeout(function () {
           debug('%s: TTL expired', storeKey);
           cache.clear(storeKey);
-        }, settings.definitions[key].ttl);
+        }, defs.ttl);
       }
 
       callback(error, result);
@@ -190,15 +230,23 @@ var Cache = (function () {
             return done(error);
           }
 
-          settings.store.set(storeKey, JSON.stringify(result), function (error) {
-            done(error, result);
-          });
+          settings.store.set(
+            storeKey,
+            JSON.stringify(result),
+            function (error) {
+              done(error, result);
+            }
+          );
         }));
       } else {
         var result = fn();
-        settings.store.set(storeKey, JSON.stringify(result), function (error) {
-          done(error, result);
-        });
+        settings.store.set(
+          storeKey,
+          JSON.stringify(result),
+          function (error) {
+            done(error, result);
+          }
+        );
       }
     } catch (e) {
       debug('%s: exception in user code', key);
@@ -207,7 +255,15 @@ var Cache = (function () {
   }
 
   function get(key) {
-    var args = [].slice.apply(arguments);
+    var args;
+    if (useQueue) {
+      args = [].slice.call(arguments);
+      args.unshift('get');
+      return queueJob.apply(this, args);
+    }
+
+    args = [].slice.apply(arguments);
+
 
     if (typeof args.slice(-1).pop() !== 'function') {
       args.push(noop);
@@ -216,13 +272,15 @@ var Cache = (function () {
     var callback = args[args.length - 1];
     var storeKey = generateKey.apply(this, args); // jshint ignore:line
 
+    debug('-> get: %s', storeKey);
+
     settings.store.get(storeKey, function (error, result) {
       if (error) {
         return callback(error);
       }
 
       if (!error && result === undefined) {
-        debug('%s: get miss', storeKey);
+        debug('<- %s: get miss', storeKey);
 
         if (!settings.definitions[key]) {
           return callback(new Error('No definition found in get for ' + key));
@@ -238,6 +296,8 @@ var Cache = (function () {
           return update.apply(this, args);
         }
       }
+
+      debug('<- %s: get hit', storeKey);
 
       // reset the TTL if there is one
       startTTL(storeKey);
@@ -274,18 +334,36 @@ var Cache = (function () {
   }
 
   function clear(key, callback) {
+    if (useQueue) {
+      var args = [].slice.call(arguments);
+      args.unshift('clear');
+      return queueJob.apply(this, args);
+    }
+
+    debug('queuing upcoming gets');
+
     if (typeof key === 'function') {
       callback = key;
       key = null;
     }
 
+    useQueue = true;
+    var wrapped = function () {
+      useQueue = false;
+      flush();
+      if (callback) {
+        callback.apply(this, arguments);
+      }
+    };
+
     if (!key) {
       debug('clearing all');
       Object.keys(settings.definitions).forEach(clearTTL);
-      settings.store.clear(callback);
+      settings.store.clear(wrapped);
     } else {
+      debug('clearing one: %s', key);
       clearTTL(key);
-      settings.store.destroy(key, callback);
+      settings.store.destroy(key, wrapped);
     }
   }
 
@@ -304,7 +382,7 @@ var Cache = (function () {
       debug('destroying all');
       keys = Object.keys(settings.definitions);
     } else {
-      debug('destroying one: %s', key);
+      debug('destroying one: %s', key, (new Error()).stack);
       keys = [key];
     }
 
@@ -321,13 +399,32 @@ var Cache = (function () {
   }
 
   function emit(event) {
-    if (event === 'connect') {
+    // allow for typos
+    if (event === 'connect' || event === 'connected') {
       connected = true;
+      debug('connected - flushing queue');
       flush();
     } else if (event === 'disconnect') {
       connected = false;
       console.log('autocache has lost it\'s persistent connection');
     }
+  }
+
+
+  if (Object.defineProperty) {
+    Object.defineProperty(cache, 'debug', {
+      get: function () {
+        return debugOn;
+      },
+      set: function (value) {
+        debugOn = value;
+        if (debugOn) {
+          cache.settings = settings;
+        } else {
+          delete cache.settings;
+        }
+      },
+    });
   }
 
   cache.emit = emit;
@@ -340,8 +437,9 @@ var Cache = (function () {
   cache.update = stub('update', update);
 
   if (typeof process !== 'undefined') {
-    if (process.env.NODE_ENV === 'debug') {
-      cache.settings = settings;
+    if (process.env.NODE_ENV === 'test') {
+      // expose settings when debugging
+      cache.debug = true;
     }
   }
 
