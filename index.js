@@ -382,7 +382,7 @@ var Cache = (function () {
       debug('destroying all');
       keys = Object.keys(settings.definitions);
     } else {
-      debug('destroying one: %s', key, (new Error()).stack);
+      debug('destroying one: %s', key);
       keys = [key];
     }
 

@@ -46,11 +46,11 @@ function runtests(cache, done) {
       t.plan(2);
 
       cache.get('number', function (error, result) {
-        t.ok(result === 20, 'inital value is correct');
+        t.equal(result, 20, 'inital value is correct');
       });
 
       cache.get('number', function (error, result) {
-        t.ok(result === 20, 'cached value has not changed');
+        t.equal(result, 20, 'cached value has not changed');
       });
     });
 
@@ -61,7 +61,7 @@ function runtests(cache, done) {
 
         cache.get('number', function (error, result) {
           t.ok(!error, 'cleared value and re-collects');
-          t.ok(result === 21, 'supports closures, value now: ' + result);
+          t.equal(result, 21, 'supports closures, value now: ' + result);
         });
       });
     });
@@ -142,31 +142,41 @@ function runtests(cache, done) {
 
   test('ttr', function (t) {
     t.plan(2);
-    cache.reset().clear();
 
-    var n = 19;
-    cache.define({
-      name: 'number',
-      update: function () {
-        n++;
-        return n;
+    async.waterfall([
+      function (done) {
+        cache.reset().clear(function () {
+          var n = 19;
+          cache.define({
+            name: 'number',
+            update: function () {
+              n++;
+              return n;
+            },
+            ttr: 500,
+          });
+          done();
+        });
       },
-      ttr: 500,
-    });
+      function (done) {
+        cache.get('number', function (error, result) {
+          t.ok(result === 20, 'result was ' + result);
+          done();
+        });
+      },
+      function (done) {
+        setTimeout(function () {
+          cache.get('number', function (error, result) {
+            t.equal(result, 21, 'result was ' + result + ' after auto refresh');
+            // hack: redefine to clear the ttr
+            cache.define('number', function () {});
+            done();
+            // t.end();
+          });
+        }, 750);
 
-    cache.get('number', function (error, result) {
-      t.ok(result === 20, 'result was ' + result);
-    });
-
-    setTimeout(function () {
-      cache.get('number', function (error, result) {
-        t.ok(result === 21, 'result was ' + result + ' after auto refresh');
-        // hack: redefine to clear the ttr
-        cache.define('number', function () {});
-        t.end();
-      });
-    }, 750);
-
+      },
+    ]);
   });
 
   test('ttr still accessible, but state', { skip: true }, function (t) {
