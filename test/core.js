@@ -440,6 +440,40 @@ function runtests(cache, done) {
     });
   });
 
+  test('disabling cache', function (t) {
+    t.plan(4);
+
+    var n = 0;
+    cache.define('number', function () {
+      n++;
+      return n;
+    });
+
+    cache.active = false;
+
+    async.series([
+      function (done) {
+        cache.get('number', function (error, result) {
+          t.equal(result, 1, 'should increment');
+        });
+        cache.get('number', function (error, result) {
+          t.equal(result, 2, 'should increment');
+        });
+        cache.get('number', function (error, result) {
+          t.equal(result, 3, 'should increment');
+        });
+        cache.get('number', function (error, result) {
+          t.equal(result, 4, 'should increment');
+          done();
+        });
+      },
+      function (done) {
+        cache.active = true;
+        done();
+      },
+    ]);
+  });
+
   test('ttl with primed keyed store', function (t) {
     // prime the store
     t.plan(4);

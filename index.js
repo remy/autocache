@@ -1,6 +1,8 @@
 var Cache = (function () {
   var noop = function () {};
 
+  var active = true;
+
   // only use require if we're in a node-like environment
   var debugOn = false;
   var debug = typeof exports !== 'undefined' ?
@@ -274,7 +276,7 @@ var Cache = (function () {
 
     debug('-> get: %s', storeKey);
 
-    settings.store.get(storeKey, function (error, result) {
+    var handler = function (error, result) {
       if (error) {
         return callback(error);
       }
@@ -307,7 +309,14 @@ var Cache = (function () {
       } catch (error) {
         return callback(error);
       }
-    });
+    };
+
+    if (active) {
+      settings.store.get(storeKey, handler);
+    } else {
+      debug('cache disabled, skipping cache check');
+      handler(null);
+    }
   }
 
   function clearTTL(key) {
@@ -425,6 +434,17 @@ var Cache = (function () {
         }
       },
     });
+
+    Object.defineProperty(cache, 'active', {
+      get: function () {
+        return active;
+      },
+      set: function (value) {
+        active = value;
+      },
+    });
+  } else {
+    cache.debug = false;
   }
 
   cache.emit = emit;
